@@ -1,0 +1,10 @@
+Theme:
+Child theme:
+Builder:
+SEO plugin:
+Booking plugin:
+Blog URL:
+Szolgaltatasok URL:
+Arlista URL:
+Munkaim URL:
+Foglalasi URL:

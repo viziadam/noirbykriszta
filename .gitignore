@@ -1,0 +1,34 @@
+# WordPress core
+wp-admin/
+wp-includes/
+wp-*.php
+index.php
+license.txt
+readme.html
+xmlrpc.php
+
+# Sensitive files
+wp-config.php
+.env
+*.sql
+*.sqlite
+*.zip
+*.tar.gz
+
+# Uploads, cache, backups
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/backup*/
+wp-content/backups/
+wp-content/ai1wm-backups/
+
+# Logs
+*.log
+debug.log
+
+# OS/editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
