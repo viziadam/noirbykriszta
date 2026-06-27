@@ -32,3 +32,10 @@ Thumbs.db
 .DS_Store
 .vscode/
 .idea/
+
+# LocalWP / local server files
+.htaccess
+local-xdebuginfo.php
+
+# Installed plugins should not be committed
+wp-content/plugins/
