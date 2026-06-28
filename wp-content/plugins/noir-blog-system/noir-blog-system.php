@@ -1,25 +1,27 @@
 <?php
 /**
  * Plugin Name: Noir Blog System
- * Description: Kétblogos SEO tudástár a Noir by Kriszta oldalhoz: új tudástár a régi blog megtartása mellett, adminból frissíthető tartalommal és egységes WordPress header/footer használattal.
- * Version: 1.1.0
+ * Description: Az új SEO Blog tudástárat a régi /blog/ oldal helyére építi be a dev környezetben, saját egységes blog headerrel/footerrel és adminból frissíthető tartalommal.
+ * Version: 1.2.0
  * Author: ChatGPT
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class Noir_Blog_System {
-    const VERSION = '1.1.0';
+    const VERSION = '1.2.0';
     const META = '_noir_blog_system';
     const OPTION = 'noir_blog_system_last_install';
+    const BACKUP_META = '_noir_blog_old_backup_id';
 
     public static function init() {
         add_action('wp_enqueue_scripts', [__CLASS__, 'assets']);
         add_action('admin_menu', [__CLASS__, 'admin']);
         add_shortcode('noir_blog_list', [__CLASS__, 'blog_list']);
         add_shortcode('noir_blog_cta', [__CLASS__, 'cta_shortcode']);
-        add_shortcode('noir_blog_switcher', [__CLASS__, 'switcher_shortcode']);
-        add_filter('the_content', [__CLASS__, 'related_block']);
+        add_filter('body_class', [__CLASS__, 'body_class']);
+        add_filter('the_content', [__CLASS__, 'render_managed_content'], 999);
+        add_filter('the_content', [__CLASS__, 'related_block'], 1000);
         add_action('wp_head', [__CLASS__, 'schema']);
     }
 
@@ -42,22 +44,21 @@ final class Noir_Blog_System {
         if (isset($_POST['noir_blog_install'])) {
             check_admin_referer('noir_blog_install');
             $result = self::install(true);
-            $notice = 'Kétblogos rendszer frissítve: ' . (int)$result['pages'] . ' oldal, ' . (int)$result['posts'] . ' cikk, ' . (int)$result['categories'] . ' kategória, ' . (int)$result['menu_items'] . ' menüpont.';
+            $notice = 'Új blog beépítve a /blog/ oldalra: ' . (int)$result['pages'] . ' oldal, ' . (int)$result['posts'] . ' cikk, ' . (int)$result['categories'] . ' kategória. Régi blog mentése: ' . esc_html($result['backup']);
         }
 
         echo '<div class="wrap">';
         echo '<h1>Noir Blog System</h1>';
         if ($notice) echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
-        echo '<p>Ez a modul a régi blogot meghagyja, és mellé létrehoz egy új <strong>Blog tudástár</strong> felületet. A normál WordPress oldal-sablont használja, ezért a meglévő header és footer marad.</p>';
-        echo '<p><strong>Fontos:</strong> az új bloglista és az új cikkek nem képpel indulnak. A képek később tartalomba illeszthetők, ha konkrét portfóliófotók állnak rendelkezésre.</p>';
+        echo '<p>Ez a verzió a régi <code>/blog/</code> oldalt cseréli le az új SEO Blog tudástárra a dev környezetben. A régi blogoldal tartalmáról vázlat mentést készít, majd az új tudástárat teszi a Blog menüpont mögé.</p>';
+        echo '<p><strong>Megjelenés:</strong> az új blog nem képpel indul, hanem egységes, szöveges, elegáns tudástárként jelenik meg. Saját blog header/footer blokkot kap, hogy ne a csúnya alap WordPress/Hello fejléc látszódjon.</p>';
         echo '<form method="post">';
         wp_nonce_field('noir_blog_install');
-        echo '<p><button class="button button-primary button-hero" name="noir_blog_install" type="submit">Kétblogos blogrendszer telepítése / frissítése</button></p>';
+        echo '<p><button class="button button-primary button-hero" name="noir_blog_install" type="submit">Új blog beépítése a /blog/ helyére</button></p>';
         echo '</form>';
-        echo '<h2>Létrejövő oldalak</h2>';
-        echo '<ul><li><code>/blogok/</code> – választó oldal a régi blog és az új tudástár között</li><li><code>/blog-tudastar/</code> – új SEO tudástár</li><li><code>/muszempilla-epites-utmutato/</code>, <code>/szempilla-lifting-utmutato/</code>, <code>/szemoldok-styling-laminalas-utmutato/</code> – pillar oldalak</li></ul>';
+        echo '<h2>Létrejövő/használt URL-ek</h2>';
+        echo '<ul><li><code>/blog/</code> – új Blog tudástár</li><li><code>/blog-regi-mentes/</code> – régi blog vázlat mentése</li><li><code>/muszempilla-epites-utmutato/</code>, <code>/szempilla-lifting-utmutato/</code>, <code>/szemoldok-styling-laminalas-utmutato/</code> – SEO pillar oldalak</li></ul>';
         echo '<h2>Shortcode-ok</h2>';
-        echo '<pre>[noir_blog_switcher]</pre>';
         echo '<pre>[noir_blog_list limit="30"]</pre>';
         echo '<pre>[noir_blog_list category="Műszempilla" limit="9"]</pre>';
         echo '<pre>[noir_blog_cta]</pre>';
@@ -66,7 +67,7 @@ final class Noir_Blog_System {
     }
 
     public static function install($force = false) {
-        $out = ['categories' => 0, 'pages' => 0, 'posts' => 0, 'menu_items' => 0];
+        $out = ['categories' => 0, 'pages' => 0, 'posts' => 0, 'backup' => 'nincs'];
 
         foreach (self::categories() as $cat) {
             if (!term_exists($cat, 'category')) {
@@ -75,17 +76,90 @@ final class Noir_Blog_System {
             }
         }
 
-        foreach (self::pages() as $page) {
-            $out['pages'] += self::upsert('page', $page['title'], $page['slug'], self::page_html($page), $page['excerpt'], '', '', $force, 'publish');
+        $backup_id = self::replace_blog_page();
+        $out['backup'] = $backup_id ? 'blog-regi-mentes' : 'nem volt szükséges';
+        $out['pages']++;
+
+        foreach (self::pillar_pages() as $page) {
+            $out['pages'] += self::upsert('page', $page['title'], $page['slug'], $page['content'], $page['excerpt'], '', '', true, 'publish');
         }
 
         foreach (self::topics() as $topic) {
-            $out['posts'] += self::upsert('post', $topic['title'], $topic['slug'], self::article_html($topic), $topic['excerpt'], $topic['category'], self::seo_description($topic), $force, 'publish');
+            $out['posts'] += self::upsert('post', $topic['title'], $topic['slug'], self::article_html($topic), $topic['excerpt'], $topic['category'], self::seo_description($topic), true, 'publish');
         }
 
-        $out['menu_items'] = self::integrate_menu();
+        self::retire_old_helper_pages();
         update_option(self::OPTION, current_time('mysql'));
         return $out;
+    }
+
+    private static function replace_blog_page() {
+        $blog = get_page_by_path('blog', OBJECT, 'page');
+        $backup_id = 0;
+
+        if ($blog && get_post_meta($blog->ID, self::META, true) !== '1') {
+            $existing_backup = get_page_by_path('blog-regi-mentes', OBJECT, 'page');
+            if (!$existing_backup) {
+                $backup_id = wp_insert_post([
+                    'post_title' => 'Régi blog mentés',
+                    'post_name' => 'blog-regi-mentes',
+                    'post_content' => $blog->post_content,
+                    'post_excerpt' => $blog->post_excerpt,
+                    'post_status' => 'draft',
+                    'post_type' => 'page',
+                    'comment_status' => 'closed',
+                    'ping_status' => 'closed',
+                ], true);
+
+                if (!is_wp_error($backup_id) && $backup_id) {
+                    foreach (get_post_meta($blog->ID) as $key => $values) {
+                        foreach ((array)$values as $value) {
+                            add_post_meta($backup_id, $key, maybe_unserialize($value));
+                        }
+                    }
+                }
+            } else {
+                $backup_id = (int)$existing_backup->ID;
+            }
+        }
+
+        $data = [
+            'post_title' => 'Blog',
+            'post_name' => 'blog',
+            'post_content' => self::blog_page_content(false),
+            'post_excerpt' => 'Szempilla és szemöldök útmutatók egy helyen.',
+            'post_status' => 'publish',
+            'post_type' => 'page',
+            'comment_status' => 'closed',
+            'ping_status' => 'closed',
+        ];
+
+        if ($blog) {
+            $data['ID'] = $blog->ID;
+            $id = wp_update_post($data, true);
+        } else {
+            $id = wp_insert_post($data, true);
+        }
+
+        if (!is_wp_error($id) && $id) {
+            update_post_meta($id, self::META, '1');
+            update_post_meta($id, self::BACKUP_META, $backup_id);
+            delete_post_meta($id, '_elementor_data');
+            delete_post_meta($id, '_elementor_edit_mode');
+            delete_post_meta($id, '_elementor_template_type');
+            update_post_meta($id, '_wp_page_template', 'default');
+        }
+
+        return $backup_id;
+    }
+
+    private static function retire_old_helper_pages() {
+        foreach (['blog-tudastar', 'blogok'] as $slug) {
+            $page = get_page_by_path($slug, OBJECT, 'page');
+            if ($page && get_post_meta($page->ID, self::META, true) === '1') {
+                wp_update_post(['ID' => $page->ID, 'post_status' => 'draft']);
+            }
+        }
     }
 
     private static function upsert($type, $title, $slug, $content, $excerpt, $category, $meta_desc, $force, $status = 'publish') {
@@ -107,9 +181,7 @@ final class Noir_Blog_System {
             'ping_status' => 'closed',
         ];
 
-        if ($type === 'post') {
-            $post['post_category'] = [self::category_id($category)];
-        }
+        if ($type === 'post') $post['post_category'] = [self::category_id($category)];
 
         if ($existing) {
             $post['ID'] = $existing->ID;
@@ -134,35 +206,24 @@ final class Noir_Blog_System {
         return 1;
     }
 
-    private static function integrate_menu() {
-        $page = get_page_by_path('blog-tudastar', OBJECT, 'page');
-        if (!$page) return 0;
+    public static function body_class($classes) {
+        if (is_page('blog')) $classes[] = 'noir-blog-takeover';
+        if (is_singular('post') && get_post_meta(get_the_ID(), self::META, true) === '1') $classes[] = 'noir-blog-takeover';
+        return $classes;
+    }
 
-        $menus = wp_get_nav_menus();
-        if (empty($menus) || is_wp_error($menus)) return 0;
+    public static function render_managed_content($content) {
+        if (!in_the_loop() || !is_main_query()) return $content;
 
-        foreach ($menus as $menu) {
-            $items = wp_get_nav_menu_items($menu->term_id);
-            if ($items && !is_wp_error($items)) {
-                foreach ($items as $item) {
-                    if ((int)$item->object_id === (int)$page->ID || mb_strtolower($item->title) === mb_strtolower('Tudástár')) {
-                        return 0;
-                    }
-                }
-            }
-
-            $created = wp_update_nav_menu_item($menu->term_id, 0, [
-                'menu-item-title' => 'Tudástár',
-                'menu-item-object-id' => $page->ID,
-                'menu-item-object' => 'page',
-                'menu-item-type' => 'post_type',
-                'menu-item-status' => 'publish',
-            ]);
-
-            return is_wp_error($created) ? 0 : 1;
+        if (is_page('blog')) {
+            return self::site_header_html('Blog') . self::blog_page_content(true) . self::site_footer_html();
         }
 
-        return 0;
+        if (is_singular('post') && get_post_meta(get_the_ID(), self::META, true) === '1') {
+            return self::site_header_html('Blog') . $content . self::site_footer_html();
+        }
+
+        return $content;
     }
 
     private static function category_id($name) {
@@ -194,7 +255,7 @@ final class Noir_Blog_System {
 
         ob_start();
         echo '<section class="noir-blog-list-wrap">';
-        echo '<div class="noir-blog-list-head"><p class="noir-kicker">ÚJ BLOGTUDÁSTÁR</p><h2>Hasznos útmutatók foglalás előtt</h2><p>Szempilla, szemöldök és ápolási témák érthetően, túlzó ígéretek nélkül. A régi blogfelület továbbra is elérhető.</p>' . self::link_row() . '</div>';
+        echo '<div class="noir-blog-list-head"><p class="noir-kicker">LEGFRISSEBB ÚTMUTATÓK</p><h2>Amit a vendégek a leggyakrabban kérdeznek</h2><p>A cikkek segítenek felkészülni, összehasonlítani a lehetőségeket és kiválasztani a következő lépést.</p></div>';
 
         if ($q->have_posts()) {
             echo '<div class="noir-blog-grid">';
@@ -210,7 +271,7 @@ final class Noir_Blog_System {
             echo '</div>';
             wp_reset_postdata();
         } else {
-            echo '<div class="noir-content-card"><p>Még nincsenek telepített blogcikkek. WordPress adminban nyisd meg: Noir Blog → Kétblogos blogrendszer telepítése / frissítése.</p></div>';
+            echo '<div class="noir-content-card"><p>Még nincsenek telepített cikkek. WordPress adminban nyisd meg: Noir Blog → Új blog beépítése a /blog/ helyére.</p></div>';
         }
 
         echo '</section>';
@@ -218,7 +279,6 @@ final class Noir_Blog_System {
     }
 
     public static function cta_shortcode() { return self::cta_html(); }
-    public static function switcher_shortcode() { return self::switcher_html(); }
 
     public static function related_block($content) {
         if (!is_singular('post') || !in_the_loop() || !is_main_query()) return $content;
@@ -269,26 +329,47 @@ final class Noir_Blog_System {
         echo "\n<script type=\"application/ld+json\">" . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "</script>\n";
     }
 
-    private static function article_html($t) {
-        $category = esc_html($t['category']);
-        $lead = self::lead_for($t);
-        $html = '<article class="noir-article-body">';
-        $html .= '<p class="noir-kicker">' . $category . '</p>';
-        $html .= '<p class="noir-lead">' . esc_html($lead) . '</p>';
-        $html .= '<div class="noir-content-card noir-summary-box"><strong>Röviden:</strong> ' . esc_html($t['excerpt']) . '</div>';
-        $html .= self::link_row();
+    private static function site_header_html($active = 'Blog') {
+        $logo = get_custom_logo();
+        if (!$logo) $logo = '<a class="noir-site-logo-text" href="' . esc_url(home_url('/')) . '">Noir by Kriszta</a>';
+        $items = [
+            'Kezdőlap' => '/',
+            'Szolgáltatások' => '/szolgaltatasok/',
+            'Munkáim' => '/munkaim/',
+            'Blog' => '/blog/',
+            'Kapcsolat' => '/kapcsolat/',
+        ];
+        $html = '<header class="noir-site-header"><div class="noir-site-header-inner"><div class="noir-site-logo">' . $logo . '</div><nav class="noir-site-nav">';
+        foreach ($items as $label => $url) {
+            $class = ($label === $active) ? ' class="is-active"' : '';
+            $html .= '<a' . $class . ' href="' . esc_url(home_url($url)) . '">' . esc_html($label) . '</a>';
+        }
+        $html .= '</nav><a class="noir-site-booking" href="' . esc_url(home_url('/idopontfoglalas/')) . '">Időpontfoglalás</a></div></header>';
+        return $html;
+    }
 
+    private static function site_footer_html() {
+        return '<footer class="noir-site-footer"><div><strong>Noir by Kriszta</strong><p>Szempilla és szemöldök szolgáltatások – természetes, igényes hatásra hangolva.</p></div><nav><a href="' . esc_url(home_url('/szolgaltatasok/')) . '">Szolgáltatások</a><a href="' . esc_url(home_url('/munkaim/')) . '">Munkáim</a><a href="' . esc_url(home_url('/kapcsolat/')) . '">Kapcsolat</a><a href="' . esc_url(home_url('/idopontfoglalas/')) . '">Időpontfoglalás</a></nav></footer>';
+    }
+
+    private static function blog_page_content($with_shortcode = true) {
+        $list = $with_shortcode ? do_shortcode('[noir_blog_list limit="30"]') : '[noir_blog_list limit="30"]';
+        return '<section class="noir-blog-hero"><div class="noir-blog-hero-overlay"><p class="noir-kicker">NOIR TUDÁSTÁR</p><h1>Magabiztos döntések a szép tekintethez</h1><p>Érthető, szakmai útmutatók. Valódi kérdésekre adott válaszok, felesleges ígéretek nélkül.</p><div class="noir-hero-actions"><a href="' . esc_url(home_url('/szolgaltatasok/')) . '">Szolgáltatások</a><a href="' . esc_url(home_url('/idopontfoglalas/')) . '">Időpontfoglalás</a></div></div></section>' . $list;
+    }
+
+    private static function article_html($t) {
+        $html = '<article class="noir-article-body">';
+        $html .= '<p class="noir-kicker">' . esc_html($t['category']) . '</p>';
+        $html .= '<p class="noir-lead">' . esc_html(self::lead_for($t)) . '</p>';
+        $html .= '<div class="noir-content-card noir-summary-box"><strong>Röviden:</strong> ' . esc_html($t['excerpt']) . '</div>';
         foreach (self::sections_for($t) as $section) {
             $html .= '<section class="noir-article-section"><h2>' . esc_html($section[0]) . '</h2><p>' . esc_html($section[1]) . '</p></section>';
         }
-
         $html .= '<section class="noir-faq-block"><h2>Gyakori kérdések</h2>';
         foreach (self::faq_for($t) as $faq) {
             $html .= '<details><summary>' . esc_html($faq[0]) . '</summary><p>' . esc_html($faq[1]) . '</p></details>';
         }
-        $html .= '</section>';
-        $html .= self::cta_html();
-        $html .= '</article>';
+        $html .= '</section>' . self::cta_html() . '</article>';
         return $html;
     }
 
@@ -303,38 +384,30 @@ final class Noir_Blog_System {
 
     private static function sections_for($t) {
         $focus = $t['focus'];
-        if ($t['intent'] === 'price') {
-            return [
-                ['Mitől függ az ár?', "A {$focus} árát nem egyetlen tényező határozza meg. Számít a választott technika, a munkaidő, az alapanyag minősége, az előkészítés, a konzultáció és a személyre szabott tervezés."],
-                ['Miért nem érdemes csak ár alapján dönteni?', 'Az olcsóbb ajánlat nem feltétlenül rossz, de mindig érdemes megnézni, mit tartalmaz. A higiénia, a portfólió, az időtartam és a kommunikáció legalább olyan fontos, mint maga az ár.'],
-                ['Hogyan hasonlíts ajánlatokat?', 'Nézd meg, van-e átlátható árlista, mit tartalmaz az új szett vagy kezelés, hogyan működik a töltés vagy kontroll, és milyen feltételek vonatkoznak késésre, lemondásra vagy no-show esetekre.'],
-                ['Összefoglalás', "A jó ár-érték arány nem a legolcsóbb megoldást jelenti, hanem azt, hogy a {$focus} biztonságos, esztétikus, kényelmes és fenntartható eredményt ad."]
-            ];
-        }
-        if ($t['intent'] === 'care') {
-            return [
-                ['Miért fontos az ápolás?', "A {$focus} utáni ápolás meghatározza, mennyire marad rendezett és tartós az eredmény. Az erős dörzsölés, olajos termékek vagy nem megfelelő tisztítás gyorsíthatja a kopást vagy hullást."],
-                ['Az első 24–48 óra', 'Az első időszakban különösen fontos a kíméletes bánásmód. Kerüld a felesleges érintést, a gőzt és minden olyan terméket, amely gyengítheti a tartósságot.'],
-                ['Mindennapi rutin', 'A tisztítás legyen gyengéd, de rendszeres. Smink, por, faggyú és krémmaradványok ronthatják az eredményt, ezért a megfelelő tisztítás a cél.'],
-                ['Mikor kérj segítséget?', 'Ha szúrást, csípést, erős pirosságot, duzzanatot vagy fájdalmat tapasztalsz, ne várj hetekig. Ilyenkor kérj szakmai tanácsot, szükség esetén pedig fordulj orvoshoz.']
-            ];
-        }
-        if ($t['intent'] === 'safety') {
-            return [
-                ['Mikor kell óvatosnak lenni?', "A {$focus} esetén aktív szemirritáció, gyulladás, friss műtét, erős könnyezés vagy ismert érzékenység mellett nem érdemes kockáztatni. Ilyenkor előbb a panasz okát kell tisztázni."],
-                ['Allergia vagy irritáció?', 'Az irritáció gyakran átmeneti kellemetlenség, az allergia viszont erősebb és tartósabb reakció is lehet. Pontos megállapítást kozmetikai blogból nem lehet tenni, ezért komoly tünetnél orvosi tanács javasolt.'],
-                ['Mit tehetsz megelőzésként?', 'Jelezd előre a korábbi érzékenységet, kérj konzultációt, és ne titkold el, ha volt már kellemetlen tapasztalatod ragasztóval, festékkel vagy kozmetikai anyaggal.'],
-                ['Mikor ne foglalj időpontot?', 'Ha a szemed fáj, váladékozik, gyulladt vagy erősen piros, a kezelés nem prioritás. Ilyenkor az egészségi állapot rendezése az első lépés.']
-            ];
-        }
-        if ($t['intent'] === 'local') {
-            return [
-                ['Hogyan válassz Budapesten?', 'Ne csak a közelséget és az árat nézd. Fontos a portfólió, a vélemények minősége, az időpontfoglalás átláthatósága, a higiénia és az, hogy a stylist tud-e személyre szabott javaslatot adni.'],
-                ['Milyen jelek biztatóak?', 'Jó jel, ha a szolgáltató világosan kommunikál az árakról, a lemondási feltételekről, az ápolásról és arról is, kinek nem ajánlott egy kezelés.'],
-                ['Foglalás előtt', 'Gondold át, milyen hatást szeretnél, és ments el néhány inspirációt. Emellett készülj arra is, hogy a szakember nem minden kért formát javasol, ha az nem illik a saját pilláidhoz vagy szemformádhoz.'],
-                ['Összefoglalás', 'Budapesten a jó választás nem a legtöbb hirdetésről szól, hanem arról, hogy a szolgáltatás szakmailag, esztétikailag és kommunikációban is illeszkedik hozzád.']
-            ];
-        }
+        if ($t['intent'] === 'price') return [
+            ['Mitől függ az ár?', "A {$focus} árát nem egyetlen tényező határozza meg. Számít a választott technika, a munkaidő, az alapanyag minősége, az előkészítés, a konzultáció és a személyre szabott tervezés."],
+            ['Miért nem érdemes csak ár alapján dönteni?', 'Az olcsóbb ajánlat nem feltétlenül rossz, de mindig érdemes megnézni, mit tartalmaz. A higiénia, a portfólió, az időtartam és a kommunikáció legalább olyan fontos, mint maga az ár.'],
+            ['Hogyan hasonlíts ajánlatokat?', 'Nézd meg, van-e átlátható árlista, mit tartalmaz az új szett vagy kezelés, hogyan működik a töltés vagy kontroll, és milyen feltételek vonatkoznak késésre, lemondásra vagy no-show esetekre.'],
+            ['Összefoglalás', "A jó ár-érték arány nem a legolcsóbb megoldást jelenti, hanem azt, hogy a {$focus} biztonságos, esztétikus, kényelmes és fenntartható eredményt ad."]
+        ];
+        if ($t['intent'] === 'care') return [
+            ['Miért fontos az ápolás?', "A {$focus} utáni ápolás meghatározza, mennyire marad rendezett és tartós az eredmény. Az erős dörzsölés, olajos termékek vagy nem megfelelő tisztítás gyorsíthatja a kopást vagy hullást."],
+            ['Az első 24–48 óra', 'Az első időszakban különösen fontos a kíméletes bánásmód. Kerüld a felesleges érintést, a gőzt és minden olyan terméket, amely gyengítheti a tartósságot.'],
+            ['Mindennapi rutin', 'A tisztítás legyen gyengéd, de rendszeres. Smink, por, faggyú és krémmaradványok ronthatják az eredményt, ezért a megfelelő tisztítás a cél.'],
+            ['Mikor kérj segítséget?', 'Ha szúrást, csípést, erős pirosságot, duzzanatot vagy fájdalmat tapasztalsz, ne várj hetekig. Ilyenkor kérj szakmai tanácsot, szükség esetén pedig fordulj orvoshoz.']
+        ];
+        if ($t['intent'] === 'safety') return [
+            ['Mikor kell óvatosnak lenni?', "A {$focus} esetén aktív szemirritáció, gyulladás, friss műtét, erős könnyezés vagy ismert érzékenység mellett nem érdemes kockáztatni. Ilyenkor előbb a panasz okát kell tisztázni."],
+            ['Allergia vagy irritáció?', 'Az irritáció gyakran átmeneti kellemetlenség, az allergia viszont erősebb és tartósabb reakció is lehet. Pontos megállapítást kozmetikai blogból nem lehet tenni, ezért komoly tünetnél orvosi tanács javasolt.'],
+            ['Mit tehetsz megelőzésként?', 'Jelezd előre a korábbi érzékenységet, kérj konzultációt, és ne titkold el, ha volt már kellemetlen tapasztalatod ragasztóval, festékkel vagy kozmetikai anyaggal.'],
+            ['Mikor ne foglalj időpontot?', 'Ha a szemed fáj, váladékozik, gyulladt vagy erősen piros, a kezelés nem prioritás. Ilyenkor az egészségi állapot rendezése az első lépés.']
+        ];
+        if ($t['intent'] === 'local') return [
+            ['Hogyan válassz Budapesten?', 'Ne csak a közelséget és az árat nézd. Fontos a portfólió, a vélemények minősége, az időpontfoglalás átláthatósága, a higiénia és az, hogy a stylist tud-e személyre szabott javaslatot adni.'],
+            ['Milyen jelek biztatóak?', 'Jó jel, ha a szolgáltató világosan kommunikál az árakról, a lemondási feltételekről, az ápolásról és arról is, kinek nem ajánlott egy kezelés.'],
+            ['Foglalás előtt', 'Gondold át, milyen hatást szeretnél, és ments el néhány inspirációt. Emellett készülj arra is, hogy a szakember nem minden kért formát javasol, ha az nem illik a saját pilláidhoz vagy szemformádhoz.'],
+            ['Összefoglalás', 'Budapesten a jó választás nem a legtöbb hirdetésről szól, hanem arról, hogy a szolgáltatás szakmailag, esztétikailag és kommunikációban is illeszkedik hozzád.']
+        ];
         return [
             ['Mi ez pontosan?', "A {$focus} lényege, hogy az eredmény ne sablonos legyen, hanem a szemformához, saját pilla vagy szemöldök állapotához és a kívánt hatáshoz igazodjon."],
             ['Kinek ajánlott?', 'Azoknak, akik rendezettebb, nőiesebb és ápoltabb megjelenést szeretnének a mindennapokban. Különösen hasznos lehet, ha kevesebb sminkkel is frissebb tekintetet szeretnél.'],
@@ -345,13 +418,11 @@ final class Noir_Blog_System {
     }
 
     private static function faq_for($t) {
-        if ($t['intent'] === 'safety') {
-            return [
-                ['Komoly tünetnél elég várni?', 'Nem. Erős fájdalom, duzzanat, váladékozás vagy romló panasz esetén szakmai vagy orvosi segítség javasolt.'],
-                ['Lehet érzékeny szemmel szolgáltatást kérni?', 'Lehet, de csak óvatosan, előzetes konzultációval és a panaszok pontos átbeszélésével.'],
-                ['A blog helyettesíti az orvosi tanácsot?', 'Nem. A cikk tájékoztatásra szolgál, egészségügyi panasz esetén orvoshoz kell fordulni.']
-            ];
-        }
+        if ($t['intent'] === 'safety') return [
+            ['Komoly tünetnél elég várni?', 'Nem. Erős fájdalom, duzzanat, váladékozás vagy romló panasz esetén szakmai vagy orvosi segítség javasolt.'],
+            ['Lehet érzékeny szemmel szolgáltatást kérni?', 'Lehet, de csak óvatosan, előzetes konzultációval és a panaszok pontos átbeszélésével.'],
+            ['A blog helyettesíti az orvosi tanácsot?', 'Nem. A cikk tájékoztatásra szolgál, egészségügyi panasz esetén orvoshoz kell fordulni.']
+        ];
         return [
             ['Mennyi ideig tart az eredmény?', 'Egyéni adottságtól, életmódtól és ápolástól függ. A saját szálak természetes cserélődése mindenkinél befolyásolja a tartósságot.'],
             ['Kell előtte konzultáció?', 'Első alkalommal igen, mert a forma, hossz, ív, szín és intenzitás személyre szabva ad szép eredményt.'],
@@ -359,20 +430,8 @@ final class Noir_Blog_System {
         ];
     }
 
-    private static function page_html($page) { return $page['content']; }
-
-    private static function link($path) { return esc_url(home_url($path)); }
-
-    private static function link_row() {
-        return '<div class="noir-link-row"><a href="' . self::link('/szolgaltatasok/') . '">Szolgáltatások</a><a href="' . self::link('/munkaim/') . '">Munkáim</a><a href="' . self::link('/idopontfoglalas/') . '">Időpontfoglalás</a><a href="' . self::link('/blog/') . '">Régi blog</a></div>';
-    }
-
     private static function cta_html() {
-        return '<section class="noir-cta-block"><p class="noir-kicker">FOGLALÁS</p><h2>Nem tudod, melyik szolgáltatás lenne ideális?</h2><p>Ha természetes, igényes hatást szeretnél, érdemes személyre szabottan választani műszempilla, szempilla lifting vagy szemöldök styling között.</p><div class="noir-cta-actions"><a class="noir-button noir-button-primary" href="' . self::link('/idopontfoglalas/') . '">Időpontot foglalok</a><a class="noir-button noir-button-secondary" href="' . self::link('/szolgaltatasok/') . '">Megnézem a szolgáltatásokat</a><a class="noir-button noir-button-secondary" href="' . self::link('/munkaim/') . '">Megnézem a munkáim</a></div></section>';
-    }
-
-    private static function switcher_html() {
-        return '<section class="noir-blog-switchboard"><article><p class="noir-kicker">MEGLÉVŐ BLOG</p><h2>Régi blogfelület</h2><p>A korábbi blogcikkek és képes bejegyzések továbbra is elérhetők.</p><a class="noir-button noir-button-secondary" href="' . self::link('/blog/') . '">Megnyitom a régi blogot</a></article><article><p class="noir-kicker">ÚJ SEO TUDÁSTÁR</p><h2>Blog tudástár</h2><p>Szöveges, keresőbarát útmutatók foglalás előtt, szolgáltatásoldalakra mutató belső linkekkel.</p><a class="noir-button noir-button-primary" href="' . self::link('/blog-tudastar/') . '">Megnyitom az új tudástárat</a></article></section>';
+        return '<section class="noir-cta-block"><p class="noir-kicker">FOGLALÁS</p><h2>Nem tudod, melyik szolgáltatás lenne ideális?</h2><p>Ha természetes, igényes hatást szeretnél, érdemes személyre szabottan választani műszempilla, szempilla lifting vagy szemöldök styling között.</p><div class="noir-cta-actions"><a class="noir-button noir-button-primary" href="' . esc_url(home_url('/idopontfoglalas/')) . '">Időpontot foglalok</a><a class="noir-button noir-button-secondary" href="' . esc_url(home_url('/szolgaltatasok/')) . '">Megnézem a szolgáltatásokat</a><a class="noir-button noir-button-secondary" href="' . esc_url(home_url('/munkaim/')) . '">Megnézem a munkáim</a></div></section>';
     }
 
     private static function first_cat($post_id) {
@@ -394,13 +453,11 @@ final class Noir_Blog_System {
         return ['Árak és döntési útmutatók', 'Műszempilla', 'Szempilla lifting', 'Szemöldök styling', 'Ápolási tippek', 'Gyakori kérdések', 'Esküvő és alkalmak'];
     }
 
-    private static function pages() {
+    private static function pillar_pages() {
         return [
-            ['title'=>'Blogok','slug'=>'blogok','excerpt'=>'Régi blog és új SEO tudástár egy helyen.','content'=>'<section class="noir-page-intro"><p class="noir-kicker">NOIR BY KRISZTA BLOG</p><h1>Két blogfelület egy helyen</h1><p>A régi képes blogfelület megmarad, az új tudástár pedig keresőbarát útmutatókkal segít a döntésben.</p></section>[noir_blog_switcher]'],
-            ['title'=>'Blog tudástár','slug'=>'blog-tudastar','excerpt'=>'Szempilla és szemöldök útmutatók egy helyen.','content'=>'<section class="noir-page-intro"><p class="noir-kicker">NOIR BY KRISZTA BLOG</p><h1>Szempilla és szemöldök tudástár</h1><p>Gyakorlati, közérthető útmutatók műszempilla, szempilla lifting és szemöldök styling témában. A cikkek célja, hogy foglalás előtt pontosabban lásd, melyik szolgáltatás illik hozzád.</p>' . self::link_row() . '</section>[noir_blog_list limit="30"]'],
-            ['title'=>'Műszempilla építés teljes útmutató','slug'=>'muszempilla-epites-utmutato','excerpt'=>'Átfogó útmutató műszempilla építéshez.','content'=>'<section class="noir-page-intro"><p class="noir-kicker">MŰSZEMPILLA ÚTMUTATÓ</p><h1>Műszempilla építés teljes útmutató</h1><p>A műszempilla építés akkor ad igazán szép eredményt, ha a szett nem sablon alapján készül, hanem a szemformához, saját pillákhoz és életmódhoz igazodik.</p>' . self::link_row() . '</section><div class="noir-content-card"><h2>Milyen technikák léteznek?</h2><p>Az 1D természetesebb, a 2D és 3D dúsabb, a volume pedig látványosabb hatást adhat. A jó választás nem a legnagyobb D számról szól, hanem az arcoddal harmonikus eredményről.</p></div>[noir_blog_list category="Műszempilla" limit="9"]'],
-            ['title'=>'Szempilla lifting teljes útmutató','slug'=>'szempilla-lifting-utmutato','excerpt'=>'Átfogó útmutató szempilla liftinghez.','content'=>'<section class="noir-page-intro"><p class="noir-kicker">SZEMPILLA LIFTING</p><h1>Szempilla lifting teljes útmutató</h1><p>A szempilla lifting a saját pillák ívét emeli meg, ezért természetes, ápolt hatást adhat műszálak nélkül.</p>' . self::link_row() . '</section><div class="noir-content-card"><h2>Kinek ajánlott?</h2><p>A lifting akkor működik szépen, ha van elegendő saját pilla, amelyet meg lehet emelni. Egyenes, lefelé álló pilláknál látványos változást adhat.</p></div>[noir_blog_list category="Szempilla lifting" limit="9"]'],
-            ['title'=>'Szemöldök styling és laminálás útmutató','slug'=>'szemoldok-styling-laminalas-utmutato','excerpt'=>'Szemöldök laminálás, formázás és festés érthetően.','content'=>'<section class="noir-page-intro"><p class="noir-kicker">SZEMÖLDÖK STYLING</p><h1>Szemöldök styling és laminálás útmutató</h1><p>A szemöldök formája erősen meghatározza az arc karakterét. A jó styling nem trendet másol, hanem az arcodhoz és szőrszálaidhoz igazodik.</p>' . self::link_row() . '</section><div class="noir-content-card"><h2>Mitől lesz szép a szemöldök?</h2><p>A forma, a szín, a sűrűség és a természetes növekedési irány együtt adja az eredményt.</p></div>[noir_blog_list category="Szemöldök styling" limit="9"]'],
+            ['title'=>'Műszempilla építés teljes útmutató','slug'=>'muszempilla-epites-utmutato','excerpt'=>'Átfogó útmutató műszempilla építéshez.','content'=>self::site_header_html('Blog') . '<section class="noir-page-intro"><p class="noir-kicker">MŰSZEMPILLA ÚTMUTATÓ</p><h1>Műszempilla építés teljes útmutató</h1><p>A műszempilla építés akkor ad igazán szép eredményt, ha a szett nem sablon alapján készül, hanem a szemformához, saját pillákhoz és életmódhoz igazodik.</p></section><div class="noir-content-card"><h2>Milyen technikák léteznek?</h2><p>Az 1D természetesebb, a 2D és 3D dúsabb, a volume pedig látványosabb hatást adhat. A jó választás nem a legnagyobb D számról szól, hanem az arcoddal harmonikus eredményről.</p></div>[noir_blog_list category="Műszempilla" limit="9"]' . self::site_footer_html()],
+            ['title'=>'Szempilla lifting teljes útmutató','slug'=>'szempilla-lifting-utmutato','excerpt'=>'Átfogó útmutató szempilla liftinghez.','content'=>self::site_header_html('Blog') . '<section class="noir-page-intro"><p class="noir-kicker">SZEMPILLA LIFTING</p><h1>Szempilla lifting teljes útmutató</h1><p>A szempilla lifting a saját pillák ívét emeli meg, ezért természetes, ápolt hatást adhat műszálak nélkül.</p></section><div class="noir-content-card"><h2>Kinek ajánlott?</h2><p>A lifting akkor működik szépen, ha van elegendő saját pilla, amelyet meg lehet emelni. Egyenes, lefelé álló pilláknál látványos változást adhat.</p></div>[noir_blog_list category="Szempilla lifting" limit="9"]' . self::site_footer_html()],
+            ['title'=>'Szemöldök styling és laminálás útmutató','slug'=>'szemoldok-styling-laminalas-utmutato','excerpt'=>'Szemöldök laminálás, formázás és festés érthetően.','content'=>self::site_header_html('Blog') . '<section class="noir-page-intro"><p class="noir-kicker">SZEMÖLDÖK STYLING</p><h1>Szemöldök styling és laminálás útmutató</h1><p>A szemöldök formája erősen meghatározza az arc karakterét. A jó styling nem trendet másol, hanem az arcodhoz és szőrszálaidhoz igazodik.</p></section><div class="noir-content-card"><h2>Mitől lesz szép a szemöldök?</h2><p>A forma, a szín, a sűrűség és a természetes növekedési irány együtt adja az eredményt.</p></div>[noir_blog_list category="Szemöldök styling" limit="9"]' . self::site_footer_html()],
         ];
     }
 
