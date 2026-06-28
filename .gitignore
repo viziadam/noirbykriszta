@@ -38,9 +38,11 @@ Thumbs.db
 local-xdebuginfo.php
 
 # Installed plugins should not be committed,
-# except the custom Noir blog plugins maintained in this repository.
+# except the custom Noir plugins maintained in this repository.
 wp-content/plugins/*
 !wp-content/plugins/noir-blog-system/
 !wp-content/plugins/noir-blog-system/**
 !wp-content/plugins/noir-blog-theme-header-fix/
 !wp-content/plugins/noir-blog-theme-header-fix/**
+!wp-content/plugins/noir-global-elementor-header/
+!wp-content/plugins/noir-global-elementor-header/**
