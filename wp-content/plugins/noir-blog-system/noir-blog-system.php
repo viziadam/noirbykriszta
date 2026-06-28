@@ -1,15 +1,15 @@
 <?php
 /**
  * Plugin Name: Noir Blog System
- * Description: Az új SEO Blog tudástárat a régi /blog/ oldal helyére építi be a dev környezetben, saját egységes blog headerrel/footerrel és adminból frissíthető tartalommal.
- * Version: 1.2.0
+ * Description: Az új SEO Blog tudástárat a régi /blog/ oldal helyére építi be a dev környezetben. A /blog/ endpointot sablonszinten is átveszi, ezért akkor is az új blog jelenik meg, ha a régi blog WordPress posts page vagy Elementor sablon volt.
+ * Version: 1.3.0
  * Author: ChatGPT
  */
 
 if (!defined('ABSPATH')) exit;
 
 final class Noir_Blog_System {
-    const VERSION = '1.2.0';
+    const VERSION = '1.3.0';
     const META = '_noir_blog_system';
     const OPTION = 'noir_blog_system_last_install';
     const BACKUP_META = '_noir_blog_old_backup_id';
@@ -17,6 +17,7 @@ final class Noir_Blog_System {
     public static function init() {
         add_action('wp_enqueue_scripts', [__CLASS__, 'assets']);
         add_action('admin_menu', [__CLASS__, 'admin']);
+        add_action('template_redirect', [__CLASS__, 'force_blog_endpoint'], 0);
         add_shortcode('noir_blog_list', [__CLASS__, 'blog_list']);
         add_shortcode('noir_blog_cta', [__CLASS__, 'cta_shortcode']);
         add_filter('body_class', [__CLASS__, 'body_class']);
@@ -50,8 +51,8 @@ final class Noir_Blog_System {
         echo '<div class="wrap">';
         echo '<h1>Noir Blog System</h1>';
         if ($notice) echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
-        echo '<p>Ez a verzió a régi <code>/blog/</code> oldalt cseréli le az új SEO Blog tudástárra a dev környezetben. A régi blogoldal tartalmáról vázlat mentést készít, majd az új tudástárat teszi a Blog menüpont mögé.</p>';
-        echo '<p><strong>Megjelenés:</strong> az új blog nem képpel indul, hanem egységes, szöveges, elegáns tudástárként jelenik meg. Saját blog header/footer blokkot kap, hogy ne a csúnya alap WordPress/Hello fejléc látszódjon.</p>';
+        echo '<p>Ez a verzió a régi <code>/blog/</code> endpointot teljesen átveszi. Akkor is az új tudástár jelenik meg, ha a korábbi blog WordPress posts page vagy Elementor sablon volt.</p>';
+        echo '<p><strong>Megjelenés:</strong> az új blog nem képpel indul, hanem egységes, elegáns tudástárként jelenik meg saját Noir fejléccel és footerrel.</p>';
         echo '<form method="post">';
         wp_nonce_field('noir_blog_install');
         echo '<p><button class="button button-primary button-hero" name="noir_blog_install" type="submit">Új blog beépítése a /blog/ helyére</button></p>';
@@ -90,6 +91,7 @@ final class Noir_Blog_System {
 
         self::retire_old_helper_pages();
         update_option(self::OPTION, current_time('mysql'));
+        flush_rewrite_rules(false);
         return $out;
     }
 
@@ -148,6 +150,10 @@ final class Noir_Blog_System {
             delete_post_meta($id, '_elementor_edit_mode');
             delete_post_meta($id, '_elementor_template_type');
             update_post_meta($id, '_wp_page_template', 'default');
+
+            if ((int)get_option('page_for_posts') === (int)$id) {
+                update_option('page_for_posts', 0);
+            }
         }
 
         return $backup_id;
@@ -206,8 +212,41 @@ final class Noir_Blog_System {
         return 1;
     }
 
+    public static function force_blog_endpoint() {
+        if (is_admin() || !self::is_blog_endpoint_request()) return;
+
+        status_header(200);
+        nocache_headers();
+        ?><!doctype html>
+<html <?php language_attributes(); ?>>
+<head>
+<meta charset="<?php bloginfo('charset'); ?>">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog tudástár | Noir by Kriszta</title>
+<?php wp_head(); ?>
+</head>
+<body <?php body_class('noir-blog-takeover'); ?>>
+<?php
+        echo self::site_header_html('Blog');
+        echo self::blog_page_content(true);
+        echo self::site_footer_html();
+        wp_footer();
+?>
+</body>
+</html><?php
+        exit;
+    }
+
+    private static function is_blog_endpoint_request() {
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+        $home_path = parse_url(home_url('/'), PHP_URL_PATH);
+        $home_path = $home_path ? rtrim($home_path, '/') : '';
+        $normalized = '/' . trim(substr($path, strlen($home_path)), '/');
+        return $normalized === '/blog';
+    }
+
     public static function body_class($classes) {
-        if (is_page('blog')) $classes[] = 'noir-blog-takeover';
+        if (is_page('blog') || self::is_blog_endpoint_request()) $classes[] = 'noir-blog-takeover';
         if (is_singular('post') && get_post_meta(get_the_ID(), self::META, true) === '1') $classes[] = 'noir-blog-takeover';
         return $classes;
     }
