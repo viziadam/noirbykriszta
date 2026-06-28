@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Noir Blog Theme Header Fix
  * Description: A Noir Blog System kiegészítője: a /blog/ oldalon és az új blogcikkeken a meglévő weboldal header/footer marad használatban, nem a generált plugin header.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: ChatGPT
  */
 
@@ -12,7 +12,7 @@ final class Noir_Blog_Theme_Header_Fix {
     public static function init() {
         add_action('plugins_loaded', [__CLASS__, 'disable_generated_header_footer'], 100);
         add_action('template_redirect', [__CLASS__, 'render_blog_with_theme_shell'], 0);
-        add_filter('body_class', [__CLASS__, 'body_class']);
+        add_filter('body_class', [__CLASS__, 'body_class'], 20);
     }
 
     public static function disable_generated_header_footer() {
@@ -20,6 +20,7 @@ final class Noir_Blog_Theme_Header_Fix {
 
         remove_action('template_redirect', ['Noir_Blog_System', 'force_blog_endpoint'], 0);
         remove_filter('the_content', ['Noir_Blog_System', 'render_managed_content'], 999);
+        remove_filter('body_class', ['Noir_Blog_System', 'body_class']);
     }
 
     public static function render_blog_with_theme_shell() {
@@ -51,6 +52,7 @@ final class Noir_Blog_Theme_Header_Fix {
     }
 
     public static function body_class($classes) {
+        $classes = array_diff($classes, ['noir-blog-takeover']);
         if (self::is_blog_path()) $classes[] = 'noir-blog-page';
         return $classes;
     }
