@@ -1,0 +1,1 @@
+Noir by Kriszta child theme placeholder.

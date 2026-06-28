@@ -1,0 +1,151 @@
+/* Noir child theme site shell */
+
+body.noir-child-theme .site-header,
+body.noir-child-theme header.site-header,
+body.noir-child-theme #site-header,
+body.noir-child-theme .elementor-location-header,
+body.noir-child-theme .wp-site-blocks > header,
+body.noir-child-theme header.wp-block-template-part,
+body.noir-child-theme .site-footer,
+body.noir-child-theme footer.site-footer,
+body.noir-child-theme #site-footer,
+body.noir-child-theme .elementor-location-footer,
+body.noir-child-theme .wp-site-blocks > footer,
+body.noir-child-theme footer.wp-block-template-part {
+  display: none !important;
+}
+
+.noir-site-header {
+  width: 100%;
+  background: #fff;
+  border-bottom: 1px solid rgba(23, 17, 13, 0.08);
+  position: relative;
+  z-index: 1000;
+}
+
+.noir-site-header__inner {
+  max-width: 1220px;
+  min-height: 74px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.noir-site-header__logo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #17110d;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+}
+
+.noir-site-header__logo img {
+  width: auto !important;
+  max-width: 86px !important;
+  max-height: 62px !important;
+  object-fit: contain;
+  display: block;
+}
+
+.noir-site-header__nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 28px;
+}
+
+.noir-site-header__nav a,
+.noir-site-header__booking {
+  color: #17110d;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.noir-site-header__nav a {
+  padding: 28px 0 22px;
+  border-bottom: 1px solid transparent;
+}
+
+.noir-site-header__nav a:hover,
+.noir-site-header__nav a:focus {
+  border-bottom-color: #9d751c;
+}
+
+.noir-site-header__booking {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 22px;
+  background: #d4ad32;
+  border-radius: 3px;
+  color: #111;
+}
+
+.noir-site-footer {
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid rgba(23, 17, 13, 0.1);
+}
+
+.noir-site-footer__inner {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 34px 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  color: #6f6258;
+}
+
+.noir-site-footer__inner strong {
+  color: #17110d;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+/* Hide old embedded header blocks only when they appear as duplicate navigation sections after the real shell. */
+body.noir-child-theme .noir-static-header,
+body.noir-child-theme .noir-global-header,
+body.noir-child-theme .noir-global-elementor-header {
+  display: none !important;
+}
+
+@media (max-width: 980px) {
+  .noir-site-header__inner {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+  .noir-site-header__nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .noir-site-header__nav a {
+    padding: 8px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .noir-site-header__nav,
+  .noir-site-footer__inner {
+    flex-direction: column;
+    align-items: center;
+  }
+  .noir-site-header__booking {
+    width: 100%;
+  }
+}
