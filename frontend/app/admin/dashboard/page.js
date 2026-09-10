@@ -716,7 +716,7 @@ function BrandingPanel() {
   const [saved, setSaved] = useState("");
 
   useEffect(() => {
-    if (data) setBranding(data.branding || { logoUrl: "", heroImageUrl: "" });
+    if (data) setBranding(data.branding || { logoUrl: "", heroImageUrl: "", aboutImageUrl: "" });
   }, [data]);
 
   const save = async () => {
@@ -758,6 +758,19 @@ function BrandingPanel() {
           label="Hero kép"
           value={branding.heroImageUrl}
           onChange={(url) => setBranding((b) => ({ ...b, heroImageUrl: url }))}
+        />
+      </div>
+
+      <div className="admin-card" style={{ maxWidth: 560 }}>
+        <h3>Bemutatkozó szekció fotója</h3>
+        <p className="muted">
+          A főoldal „Bemutatkozás” szekciójában, a szöveg mellett megjelenő fotó (pl. Krisztáról).
+          Álló tájolású, jó minőségű kép ajánlott (kb. 800&times;1000&nbsp;px).
+        </p>
+        <ImageUploader
+          label="Bemutatkozó fotó"
+          value={branding.aboutImageUrl}
+          onChange={(url) => setBranding((b) => ({ ...b, aboutImageUrl: url }))}
         />
       </div>
 

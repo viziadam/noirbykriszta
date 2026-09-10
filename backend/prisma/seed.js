@@ -133,10 +133,11 @@ async function main() {
       minLeadHours: Number(process.env.MIN_LEAD_HOURS) || 12,
     },
     branding: {
-      // Üresen hagyva a beépített line-art logó / az alap hero-kép jelenik meg.
+      // Üresen hagyva a beépített line-art logó / az alap képek jelennek meg.
       // Az admin felület "Kinézet" moduljából tölthető fel saját.
       logoUrl: "",
       heroImageUrl: "",
+      aboutImageUrl: "",
     },
     about: {
       heading: "Kriszta vagyok, a Noir by Kriszta alapítója",

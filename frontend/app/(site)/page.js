@@ -63,6 +63,9 @@ export default async function HomePage() {
     allImages.find((i) => i.type === "hero")?.url ||
     HERO_IMG_FALLBACK;
 
+  // A bemutatkozó szekció fotója — admin "Kinézet" modulból cserélhető
+  const aboutImg = branding.aboutImageUrl || ABOUT_IMG;
+
   const testimonials = testimonialsData?.testimonials || [];
 
   // A főoldali kártyák NAGY KATEGÓRIÁK (nem konkrét szolgáltatások). A gomb a
@@ -135,7 +138,7 @@ export default async function HomePage() {
           <div className="about">
             <Reveal className="about__photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ABOUT_IMG} alt="Kriszta, a NOIR By Kriszta alapítója, munka közben" loading="lazy" />
+              <img src={aboutImg} alt="Kriszta, a NOIR By Kriszta alapítója, munka közben" loading="lazy" />
             </Reveal>
             <Reveal>
               <p className="eyebrow">A segítőd a szépségben</p>
