@@ -1,0 +1,10 @@
+# Egységes sorvégek — a shell szkriptek MINDIG LF-fel (különben a Linux
+# konténerben nem futnak le).
+* text=auto eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.svg text

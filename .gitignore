@@ -1,0 +1,30 @@
+node_modules/
+.env
+.env.local
+.env*.local
+*.log
+npm-debug.log*
+
+# Next.js
+.next/
+out/
+frontend/.next/
+frontend/out/
+
+# Prisma / SQLite (régi lokális dev)
+backend/prisma/*.db
+backend/prisma/*.db-journal
+backend/prisma/migrations/dev.db*
+
+# Feltöltött képek (élesben docker volume-ban vannak)
+backend/uploads/
+
+# Docker helyi adat
+**/caddy_data/
+**/caddy_config/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

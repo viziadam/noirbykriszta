@@ -1,0 +1,31 @@
+# Noir by Kriszta — reverse proxy + automatikus HTTPS
+#
+# A {$SITE_DOMAIN} a docker-compose .env-jéből jön (pl. noirbykriszta.duckdns.org).
+# Caddy magától kér és újít Let's Encrypt tanúsítványt erre a domainre.
+#
+# Domain váltása: írd át a SITE_DOMAIN-t a .env-ben, majd:  docker compose up -d
+# (Egyszerre több domain is megadható szóközzel elválasztva, pl.:
+#  SITE_DOMAIN="noirbykriszta.hu www.noirbykriszta.hu")
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# API és feltöltött képek → backend
+	@backend path /api/* /uploads/*
+	handle @backend {
+		reverse_proxy backend:4000
+	}
+
+	# minden más → Next.js frontend
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	header {
+		# alap biztonsági fejlécek
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

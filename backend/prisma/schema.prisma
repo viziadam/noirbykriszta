@@ -1,0 +1,105 @@
+// Noir by Kriszta — adatmodell (PostgreSQL)
+// A DATABASE_URL a .env-ből jön, pl.:
+//   postgresql://noir:PASSWORD@db:5432/noirbykriszta?schema=public   (Docker)
+//   postgresql://noir:PASSWORD@localhost:5432/noirbykriszta          (helyi fejlesztés)
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Service {
+  id              Int           @id @default(autoincrement())
+  category        String
+  name            String
+  description     String        @default("")
+  imageUrl        String?
+  durationMinutes Int           @default(60)
+  price           Int           @default(0)
+  isActive        Boolean       @default(true)
+  order           Int           @default(0)
+  appointments    Appointment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([category, name])
+}
+
+model Appointment {
+  id           Int      @id @default(autoincrement())
+  service      Service  @relation(fields: [serviceId], references: [id])
+  serviceId    Int
+  customerName String
+  phone        String
+  email        String
+  note         String   @default("")
+  startTime    DateTime
+  endTime      DateTime
+  status       String   @default("pending") // pending | confirmed | cancelled
+  source       String   @default("online")  // online | manual
+  createdAt    DateTime @default(now())
+
+  @@index([startTime])
+}
+
+model BusinessHours {
+  id        Int     @id @default(autoincrement())
+  weekday   Int     @unique // 0 = vasárnap ... 6 = szombat
+  openTime  String  @default("09:00")
+  closeTime String  @default("18:00")
+  isClosed  Boolean @default(false)
+}
+
+model TimeOff {
+  id        Int      @id @default(autoincrement())
+  startDate DateTime
+  endDate   DateTime
+  reason    String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model GalleryImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  urlAfter  String?  // előtte–utána párnál az "utána" kép
+  category  String   @default("szempilla") // szempilla | szemoldok | elotte-utana
+  caption   String   @default("")
+  order     Int      @default(0)
+  type      String   @default("gallery") // gallery | before-after | hero | carousel
+  createdAt DateTime @default(now())
+}
+
+model Testimonial {
+  id       Int     @id @default(autoincrement())
+  author   String
+  text     String
+  rating   Int     @default(5)
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+}
+
+model SiteContent {
+  key       String   @id // pl. "about", "contact"
+  value     String   // JSON string
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}

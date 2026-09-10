@@ -1,0 +1,22 @@
+{
+  "name": "noirbykriszta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Noir by Kriszta — Lash Stylist weboldal (Next.js + Express + Prisma + PostgreSQL)",
+  "scripts": {
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev:db": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db",
+    "dev": "concurrently -n backend,frontend -c magenta,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "seed": "npm --prefix backend run seed",
+
+    "prod:up": "docker compose up -d --build",
+    "prod:down": "docker compose down",
+    "prod:logs": "docker compose logs -f",
+    "prod:migrate": "docker compose exec backend npx prisma migrate deploy",
+    "prod:seed": "docker compose exec backend node prisma/seed.js",
+    "backup:db": "docker compose exec -T db pg_dump -U noir noirbykriszta > backup_$(date +%Y%m%d_%H%M%S).sql"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

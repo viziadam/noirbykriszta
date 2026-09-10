@@ -1,0 +1,12 @@
+# Helyi fejlesztéshez: kiteszi a Postgres portot a gépre, hogy a
+# `npm run dev` (helyi backend) csatlakozni tudjon hozzá.
+#
+# Használat:
+#   npm run dev:db      # csak az adatbázis konténer, porttal
+#   # backend/.env:  DATABASE_URL="postgresql://noir:JELSZO@localhost:5432/noirbykriszta"
+#   npm run dev         # backend + frontend helyben
+
+services:
+  db:
+    ports:
+      - "5432:5432"

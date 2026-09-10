@@ -1,0 +1,119 @@
+name: noirbykriszta
+
+services:
+  # ----------------------------------------------------------------
+  #  PostgreSQL — az adatok NEVEZETT VOLUME-ban vannak (pgdata),
+  #  ezért redeploy / `docker compose up --build` után is megmaradnak.
+  #  Csak `docker compose down -v` törli — azt SOHA ne futtasd élesben.
+  # ----------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: noir
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?add meg a POSTGRES_PASSWORD-ot a .env-ben}
+      POSTGRES_DB: noirbykriszta
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noir -d noirbykriszta"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ----------------------------------------------------------------
+  #  Backend — Express API + Prisma. Induláskor lefuttatja a
+  #  migrációkat és az idempotens seedet (meglévő adatot nem ír felül).
+  #  A feltöltött képek a nevezett `uploads` volume-ban maradnak.
+  # ----------------------------------------------------------------
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://noir:${POSTGRES_PASSWORD}@db:5432/noirbykriszta?schema=public
+      CORS_ORIGIN: ${SITE_URL}
+      JWT_SECRET: ${JWT_SECRET:?add meg a JWT_SECRET-et a .env-ben}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?add meg az ADMIN_EMAIL-t a .env-ben}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?add meg az ADMIN_PASSWORD-ot a .env-ben}
+      UPLOAD_DIR: /app/uploads
+      SLOT_STEP_MINUTES: ${SLOT_STEP_MINUTES:-30}
+      MIN_LEAD_HOURS: ${MIN_LEAD_HOURS:-12}
+      # --- Email (SMTP: Brevo / Gmail  —  vagy Resend) ---
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      OWNER_EMAIL: ${OWNER_EMAIL:?add meg az OWNER_EMAIL-t a .env-ben}
+      SALON_ADDRESS: ${SALON_ADDRESS:-}
+    volumes:
+      - uploads:/app/uploads
+
+  # ----------------------------------------------------------------
+  #  Frontend — Next.js (standalone). A domain váltásához elég a
+  #  SITE_URL módosítása a .env-ben + `docker compose up -d`.
+  # ----------------------------------------------------------------
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      BACKEND_URL: http://backend:4000
+      SITE_URL: ${SITE_URL:?add meg a SITE_URL-t a .env-ben}
+      NEXT_PUBLIC_API_BASE: /api
+      OG_IMAGE_URL: ${OG_IMAGE_URL:-}
+
+  # ----------------------------------------------------------------
+  #  Caddy — reverse proxy + AUTOMATIKUS HTTPS (Let's Encrypt).
+  #  A tanúsítványok a `caddy_data` volume-ban maradnak.
+  # ----------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?add meg a SITE_DOMAIN-t a .env-ben (pl. noirbykriszta.duckdns.org)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # ----------------------------------------------------------------
+  #  DuckDNS frissítő — csak akkor indul, ha a .env-ben:
+  #     COMPOSE_PROFILES=duckdns
+  #  (a valódi domain megérkezése után ez kikapcsolható)
+  # ----------------------------------------------------------------
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    restart: unless-stopped
+    profiles: ["duckdns"]
+    environment:
+      TZ: Europe/Budapest
+      SUBDOMAINS: ${DUCKDNS_SUBDOMAIN:-}
+      TOKEN: ${DUCKDNS_TOKEN:-}
+      UPDATE_IP: ipv4
+      LOG_FILE: "false"
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

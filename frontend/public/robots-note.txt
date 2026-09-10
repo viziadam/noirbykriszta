@@ -1,0 +1,2 @@
+A robots.txt és sitemap.xml dinamikusan generálódik (app/robots.js, app/sitemap.js).
+Ez a mappa a statikus eszközöké (pl. később ide kerülhet egy og.png vagy egyedi favicon).
