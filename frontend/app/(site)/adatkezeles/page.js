@@ -22,7 +22,7 @@ export default function PrivacyPage() {
 
             <h2>1. Az adatkezelő</h2>
             <p>
-              Noir by Kriszta (egyéni vállalkozó), székhely: 2119 Pécel, Kossuth Lajos utca 12.,
+              NOIR By Kriszta (egyéni vállalkozó), székhely: 2119 Pécel, Kossuth Lajos utca 12.,
               e-mail: kriszta@noirbykriszta.hu. A továbbiakban: „Adatkezelő”.
             </p>
 

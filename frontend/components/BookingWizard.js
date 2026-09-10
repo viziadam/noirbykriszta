@@ -24,12 +24,24 @@ function nextDays(n) {
   return out;
 }
 
-export default function BookingWizard({ grouped = [], initialServiceId = null }) {
+export default function BookingWizard({
+  grouped = [],
+  initialServiceId = null,
+  initialCategory = null,
+}) {
   const flatServices = useMemo(() => grouped.flatMap((g) => g.items), [grouped]);
-  const initial = flatServices.find((s) => String(s.id) === String(initialServiceId));
+  // Konkrét szolgáltatás CSAK a Szolgáltatások oldal deep-linkjéből (?szolgaltatas=).
+  const initial = initialServiceId
+    ? flatServices.find((s) => String(s.id) === String(initialServiceId))
+    : null;
 
+  const categoryExists = grouped.some((g) => g.category === initialCategory);
+
+  // Ha nincs konkrét szolgáltatás, MINDIG az 1. lépéstől (szolgáltatás kiválasztása) indul.
   const [step, setStep] = useState(initial ? 1 : 0);
-  const [category, setCategory] = useState(initial?.category || grouped[0]?.category || "");
+  const [category, setCategory] = useState(
+    initial?.category || (categoryExists ? initialCategory : grouped[0]?.category) || ""
+  );
   const [service, setService] = useState(initial || null);
 
   const [day, setDay] = useState(null);
@@ -151,10 +163,15 @@ export default function BookingWizard({ grouped = [], initialServiceId = null })
               }}
             >
               {grouped.map((g) => (
-                <option key={g.category}>{g.category}</option>
+                <option key={g.category} value={g.category}>
+                  {g.category}
+                </option>
               ))}
             </select>
           </div>
+          <p className="muted" style={{ marginTop: "-0.4rem" }}>
+            Válaszd ki a konkrét szolgáltatást a kategórián belül:
+          </p>
           <div className="choice-grid">
             {(grouped.find((g) => g.category === category)?.items || []).map((s) => (
               <button

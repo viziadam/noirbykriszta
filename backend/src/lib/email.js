@@ -23,7 +23,7 @@ import { Resend } from "resend";
  *    SALON_ADDRESS  – a szalon címe az emailek láblécében
  * ------------------------------------------------------------------ */
 
-const FROM = process.env.MAIL_FROM || "Noir by Kriszta <onboarding@resend.dev>";
+const FROM = process.env.MAIL_FROM || "NOIR By Kriszta <onboarding@resend.dev>";
 const OWNER = process.env.OWNER_EMAIL || "kriszta@noirbykriszta.hu";
 const REPLY_TO = process.env.MAIL_REPLY_TO || OWNER;
 const ADDRESS = process.env.SALON_ADDRESS || "2119 Pécel, Kossuth Lajos utca 12.";
@@ -113,7 +113,7 @@ function shell(title, innerHtml) {
     <tr><td align="center">
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border:1px solid ${COLORS.gold}33;border-radius:6px;overflow:hidden;">
         <tr><td style="background:${COLORS.dark};padding:28px 32px;text-align:center;">
-          <div style="font-family:Georgia,'Times New Roman',serif;color:${COLORS.gold};font-size:22px;letter-spacing:1px;">Noir by Kriszta</div>
+          <div style="font-family:Georgia,'Times New Roman',serif;color:${COLORS.gold};font-size:22px;letter-spacing:1px;">NOIR By Kriszta</div>
           <div style="color:${COLORS.cream};font-size:10px;letter-spacing:4px;text-transform:uppercase;margin-top:4px;">Lash Stylist</div>
         </td></tr>
         <tr><td style="padding:32px;">
@@ -121,7 +121,7 @@ function shell(title, innerHtml) {
           ${innerHtml}
         </td></tr>
         <tr><td style="background:${COLORS.darker};padding:20px 32px;color:${COLORS.cream};font-size:12px;line-height:1.6;">
-          Noir by Kriszta · ${ADDRESS}<br>
+          NOIR By Kriszta · ${ADDRESS}<br>
           Válaszért írj erre az emailre: ${REPLY_TO}
         </td></tr>
       </table>
@@ -162,7 +162,7 @@ export async function sendBookingCreated(appointment, service) {
   // Vendégnek – az igényt megkaptuk, megerősítés hamarosan
   const guest = await sendMail({
     to: appointment.email,
-    subject: "Megkaptuk a foglalási igényedet — Noir by Kriszta",
+    subject: "Megkaptuk a foglalási igényedet — NOIR By Kriszta",
     html: shell(
       "Megkaptuk a foglalási igényedet",
       p(`Kedves ${appointment.customerName}!`) +
@@ -179,7 +179,7 @@ ${d.text}
 Cím: ${ADDRESS}
 
 Ha módosítanál vagy lemondanál, válaszolj erre az emailre vagy hívj telefonon.
-Noir by Kriszta`,
+NOIR By Kriszta`,
   });
 
   // Adminnak – új foglalás
@@ -216,19 +216,19 @@ Státusz: megerősítésre vár.`,
 
 const STATUS_COPY = {
   confirmed: {
-    subject: "Foglalásod megerősítve — Noir by Kriszta",
+    subject: "Foglalásod megerősítve — NOIR By Kriszta",
     title: "A foglalásod megerősítve",
     lead: "Örömmel jelzem, hogy az időpontod megerősítettem. Lent a részletek — szeretettel várlak!",
     closing: "Ha közbejönne valami, kérlek időben jelezd (válasz erre az emailre vagy telefon).",
   },
   cancelled: {
-    subject: "Foglalásod lemondva — Noir by Kriszta",
+    subject: "Foglalásod lemondva — NOIR By Kriszta",
     title: "A foglalásod lemondva",
     lead: "A lenti időpont sajnos lemondásra került. Ha szeretnél új időpontot, a weboldalon bármikor foglalhatsz, vagy válaszolj erre az emailre.",
     closing: "Elnézést a kellemetlenségért — igyekszem mielőbb megfelelő időpontot találni.",
   },
   pending: {
-    subject: "Foglalásod frissült — Noir by Kriszta",
+    subject: "Foglalásod frissült — NOIR By Kriszta",
     title: "A foglalásod állapota frissült",
     lead: "A foglalásod ismét megerősítésre vár.",
     closing: "Hamarosan jelentkezem a visszaigazolással.",
@@ -255,7 +255,7 @@ ${d.text}
 Cím: ${ADDRESS}
 
 ${copy.closing}
-Noir by Kriszta`,
+NOIR By Kriszta`,
   });
 
   const owner = await sendMail({

@@ -47,7 +47,7 @@ export default function Carousel({ images = [] }) {
         {images.map((img) => (
           <figure className="carousel__slide" key={img.id}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img.url} alt={img.caption || "Noir by Kriszta munka"} loading="lazy" />
+            <img src={img.url} alt={img.caption || "NOIR By Kriszta munka"} loading="lazy" />
             {img.caption && <figcaption className="carousel__caption">{img.caption}</figcaption>}
           </figure>
         ))}

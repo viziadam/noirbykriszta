@@ -36,7 +36,7 @@ export default function ServicesAccordion({ grouped = [] }) {
                   {s.description && <p className="price-row__desc">{s.description}</p>}
                   <button
                     className="btn btn--outline-dark btn--sm price-row__book"
-                    onClick={() => router.push(`/foglalas?service=${s.id}`)}
+                    onClick={() => router.push(`/foglalas?szolgaltatas=${s.id}`)}
                   >
                     Foglalás
                   </button>

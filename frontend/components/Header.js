@@ -12,7 +12,7 @@ const LINKS = [
   { href: "/kapcsolat", label: "Kapcsolat" },
 ];
 
-export default function Header() {
+export default function Header({ logoUrl = "" }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -45,8 +45,8 @@ export default function Header() {
   return (
     <header className={headerClass}>
       <div className="container header__inner">
-        <Link href="/" aria-label="Noir by Kriszta főoldal">
-          <Logo size={40} />
+        <Link href="/" aria-label="NOIR By Kriszta főoldal">
+          <Logo size={40} logoUrl={logoUrl} />
         </Link>
 
         <button

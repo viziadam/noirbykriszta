@@ -34,8 +34,8 @@ const SITE_URL =
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Noir by Kriszta – Szempilla Építés és Szemöldök Lamináció Pécelen",
-    template: "%s – Noir by Kriszta",
+    default: "NOIR By Kriszta – Szempilla Építés és Szemöldök Lamináció Pécelen",
+    template: "%s – NOIR By Kriszta",
   },
   description:
     "Prémium szempilla építés (1D/2D/3D/hibrid), szempilla töltés és szemöldök lamináció Pécelen és Budapesten. Higiénikus, allergiatesztelt anyagok. Foglalj időpontot online.",
@@ -50,8 +50,8 @@ export const metadata = {
   openGraph: {
     type: "website",
     locale: "hu_HU",
-    siteName: "Noir by Kriszta",
-    title: "Noir by Kriszta – Lash Stylist Pécelen",
+    siteName: "NOIR By Kriszta",
+    title: "NOIR By Kriszta – Lash Stylist Pécelen",
     description:
       "Prémium szempilla építés és szemöldök-formázás Pécelen és Budapesten. Természetes, tartós eredmény.",
   },

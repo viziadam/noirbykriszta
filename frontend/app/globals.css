@@ -258,6 +258,12 @@ img {
   gap: 0.7rem;
   color: var(--on-dark);
 }
+.logo__img {
+  display: block;
+  width: auto;
+  max-height: 56px;
+  object-fit: contain;
+}
 .logo__text {
   display: flex;
   flex-direction: column;

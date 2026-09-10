@@ -11,8 +11,10 @@ const MODULES = [
   { key: "appointments", label: "Foglalások" },
   { key: "services", label: "Szolgáltatások & árak" },
   { key: "gallery", label: "Képek & galéria" },
+  { key: "branding", label: "Kinézet (logó, hero)" },
   { key: "hours", label: "Nyitvatartás & szünetek" },
-  { key: "content", label: "Tartalom" },
+  { key: "contact", label: "Kapcsolat & elérhetőség" },
+  { key: "content", label: "Bemutatkozó szöveg" },
   { key: "messages", label: "Üzenetek" },
 ];
 
@@ -57,7 +59,9 @@ export default function AdminDashboard() {
         {active === "appointments" && <AppointmentsPanel />}
         {active === "services" && <ServicesPanel />}
         {active === "gallery" && <GalleryPanel />}
+        {active === "branding" && <BrandingPanel />}
         {active === "hours" && <HoursPanel />}
+        {active === "contact" && <ContactPanel />}
         {active === "content" && <ContentPanel />}
         {active === "messages" && <MessagesPanel />}
       </main>
@@ -705,53 +709,173 @@ function HoursPanel() {
   );
 }
 
-/* -------------------------- TARTALOM -------------------------- */
-function ContentPanel() {
+/* -------------------------- KINÉZET (logó, hero) -------------------------- */
+function BrandingPanel() {
   const { data, error, reload } = useLoad(() => adminFetch("/content"), []);
-  const [about, setAbout] = useState(null);
+  const [branding, setBranding] = useState(null);
+  const [saved, setSaved] = useState("");
+
+  useEffect(() => {
+    if (data) setBranding(data.branding || { logoUrl: "", heroImageUrl: "" });
+  }, [data]);
+
+  const save = async () => {
+    await adminFetch("/admin/content/branding", { method: "PUT", body: { value: branding } });
+    setSaved("Kinézet mentve. Frissítsd az oldalt a változás megtekintéséhez.");
+    setTimeout(() => setSaved(""), 3500);
+    reload();
+  };
+
+  if (!branding) return <div className="spinner" />;
+
+  return (
+    <>
+      <h1>Kinézet</h1>
+      <Msg error={error} />
+      {saved && <div className="form-note form-note--ok">{saved}</div>}
+
+      <div className="admin-card" style={{ maxWidth: 560 }}>
+        <h3>Logó</h3>
+        <p className="muted">
+          Ha feltöltesz saját logót, az jelenik meg a fejlécben és a láblécben (a beépített
+          rajzolt logó helyett). Ajánlott: átlátszó hátterű PNG vagy SVG, kb. 300&nbsp;px széles.
+          Üresen hagyva a beépített „NOIR By Kriszta” logó látszik.
+        </p>
+        <ImageUploader
+          label="Logó kép"
+          value={branding.logoUrl}
+          onChange={(url) => setBranding((b) => ({ ...b, logoUrl: url }))}
+        />
+      </div>
+
+      <div className="admin-card" style={{ maxWidth: 560 }}>
+        <h3>Főoldali hero kép</h3>
+        <p className="muted">
+          Ez a nagy, teljes képernyős kép a főoldal tetején. Fekvő tájolású, nagy felbontású
+          kép ajánlott (min. 1600&nbsp;px széles).
+        </p>
+        <ImageUploader
+          label="Hero kép"
+          value={branding.heroImageUrl}
+          onChange={(url) => setBranding((b) => ({ ...b, heroImageUrl: url }))}
+        />
+      </div>
+
+      <button className="btn btn--primary btn--sm" onClick={save}>
+        Kinézet mentése
+      </button>
+    </>
+  );
+}
+
+/* -------------------------- KAPCSOLAT & ELÉRHETŐSÉG -------------------------- */
+function ContactPanel() {
+  const { data, error, reload } = useLoad(() => adminFetch("/content"), []);
   const [contact, setContact] = useState(null);
   const [saved, setSaved] = useState("");
 
   useEffect(() => {
-    if (data) {
-      setAbout(data.about || { heading: "", paragraph: "", badges: [{}, {}, {}] });
-      setContact(data.contact || {});
-    }
+    if (data) setContact(data.contact || {});
   }, [data]);
 
-  const save = async (key, value) => {
-    await adminFetch(`/admin/content/${key}`, { method: "PUT", body: { value } });
-    setSaved(`Mentve: ${key}`);
-    setTimeout(() => setSaved(""), 2500);
+  const save = async () => {
+    await adminFetch("/admin/content/contact", { method: "PUT", body: { value: contact } });
+    setSaved("Kapcsolati adatok mentve. Frissül a lábléc és a Kapcsolat oldal.");
+    setTimeout(() => setSaved(""), 3500);
     reload();
   };
 
-  if (!about || !contact) return <div className="spinner" />;
+  if (!contact) return <div className="spinner" />;
 
   return (
     <>
-      <h1>Tartalom</h1>
+      <h1>Kapcsolat &amp; elérhetőség</h1>
+      <p className="muted">
+        Ezek az adatok jelennek meg a lábléc­ben és a Kapcsolat oldalon (telefonszám,
+        Instagram, Facebook, cím, térkép, nyitvatartási környék).
+      </p>
       <Msg error={error} />
       {saved && <div className="form-note form-note--ok">{saved}</div>}
 
       <div className="admin-card" style={{ maxWidth: 620 }}>
-        <h3>Főoldali bemutatkozás</h3>
+        {[
+          ["businessName", "Név / cégnév"],
+          ["phone", "Telefonszám (pl. +36 30 123 4567)"],
+          ["email", "Email cím"],
+          ["instagram", "Instagram link (teljes URL)"],
+          ["facebook", "Facebook link (teljes URL)"],
+          ["addressLine", "Cím — utca, házszám"],
+          ["postalCode", "Irányítószám"],
+          ["city", "Város"],
+          ["googleBusinessUrl", "Google Cégprofil link"],
+          ["googleMapsEmbed", "Google Térkép beágyazási URL (…&output=embed)"],
+        ].map(([k, label]) => (
+          <div className="admin-field" key={k}>
+            <label>{label}</label>
+            <input
+              value={contact[k] || ""}
+              onChange={(e) => setContact((c) => ({ ...c, [k]: e.target.value }))}
+            />
+          </div>
+        ))}
+        <div className="admin-field">
+          <label>Környék / SEO szöveg (a lábléc alján és a Kapcsolat oldalon)</label>
+          <textarea
+            rows={3}
+            value={contact.areasText || ""}
+            onChange={(e) => setContact((c) => ({ ...c, areasText: e.target.value }))}
+          />
+        </div>
+        <button className="btn btn--primary btn--sm" onClick={save}>
+          Kapcsolati adatok mentése
+        </button>
+      </div>
+    </>
+  );
+}
+
+/* -------------------------- BEMUTATKOZÓ SZÖVEG -------------------------- */
+function ContentPanel() {
+  const { data, error, reload } = useLoad(() => adminFetch("/content"), []);
+  const [about, setAbout] = useState(null);
+  const [saved, setSaved] = useState("");
+
+  useEffect(() => {
+    if (data) setAbout(data.about || { heading: "", paragraph: "", badges: [{}, {}, {}] });
+  }, [data]);
+
+  const save = async () => {
+    await adminFetch("/admin/content/about", { method: "PUT", body: { value: about } });
+    setSaved("Bemutatkozó szöveg mentve.");
+    setTimeout(() => setSaved(""), 3000);
+    reload();
+  };
+
+  if (!about) return <div className="spinner" />;
+
+  return (
+    <>
+      <h1>Bemutatkozó szöveg (főoldal)</h1>
+      <Msg error={error} />
+      {saved && <div className="form-note form-note--ok">{saved}</div>}
+
+      <div className="admin-card" style={{ maxWidth: 620 }}>
         <div className="admin-field">
           <label>Címsor</label>
-          <input value={about.heading} onChange={(e) => setAbout((a) => ({ ...a, heading: e.target.value }))} />
+          <input value={about.heading || ""} onChange={(e) => setAbout((a) => ({ ...a, heading: e.target.value }))} />
         </div>
         <div className="admin-field">
           <label>Bekezdés</label>
-          <textarea rows={5} value={about.paragraph} onChange={(e) => setAbout((a) => ({ ...a, paragraph: e.target.value }))} />
+          <textarea rows={5} value={about.paragraph || ""} onChange={(e) => setAbout((a) => ({ ...a, paragraph: e.target.value }))} />
         </div>
-        {(about.badges || []).map((b, i) => (
+        {(about.badges || [{}, {}, {}]).map((b, i) => (
           <div className="admin-row" key={i}>
             <div className="admin-field" style={{ flex: 1 }}>
               <label>Bizalom-jelző {i + 1} — cím</label>
               <input
                 value={b.title || ""}
                 onChange={(e) =>
-                  setAbout((a) => ({ ...a, badges: a.badges.map((x, xi) => (xi === i ? { ...x, title: e.target.value } : x)) }))
+                  setAbout((a) => ({ ...a, badges: (a.badges || [{}, {}, {}]).map((x, xi) => (xi === i ? { ...x, title: e.target.value } : x)) }))
                 }
               />
             </div>
@@ -760,42 +884,14 @@ function ContentPanel() {
               <input
                 value={b.text || ""}
                 onChange={(e) =>
-                  setAbout((a) => ({ ...a, badges: a.badges.map((x, xi) => (xi === i ? { ...x, text: e.target.value } : x)) }))
+                  setAbout((a) => ({ ...a, badges: (a.badges || [{}, {}, {}]).map((x, xi) => (xi === i ? { ...x, text: e.target.value } : x)) }))
                 }
               />
             </div>
           </div>
         ))}
-        <button className="btn btn--primary btn--sm" onClick={() => save("about", about)}>
+        <button className="btn btn--primary btn--sm" onClick={save}>
           Bemutatkozás mentése
-        </button>
-      </div>
-
-      <div className="admin-card" style={{ maxWidth: 620 }}>
-        <h3>Kapcsolat adatok</h3>
-        {[
-          ["businessName", "Cégnév"],
-          ["addressLine", "Cím (utca, házszám)"],
-          ["postalCode", "Irányítószám"],
-          ["city", "Város"],
-          ["phone", "Telefon"],
-          ["email", "Email"],
-          ["instagram", "Instagram URL"],
-          ["facebook", "Facebook URL"],
-          ["googleMapsEmbed", "Google Maps embed URL"],
-          ["googleBusinessUrl", "Google Cégprofil URL"],
-        ].map(([k, label]) => (
-          <div className="admin-field" key={k}>
-            <label>{label}</label>
-            <input value={contact[k] || ""} onChange={(e) => setContact((c) => ({ ...c, [k]: e.target.value }))} />
-          </div>
-        ))}
-        <div className="admin-field">
-          <label>Környék SEO szöveg</label>
-          <textarea rows={3} value={contact.areasText || ""} onChange={(e) => setContact((c) => ({ ...c, areasText: e.target.value }))} />
-        </div>
-        <button className="btn btn--primary btn--sm" onClick={() => save("contact", contact)}>
-          Kapcsolat mentése
         </button>
       </div>
     </>

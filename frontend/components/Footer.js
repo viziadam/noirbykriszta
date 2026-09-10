@@ -3,7 +3,7 @@ import Logo from "./Logo";
 import { IconInstagram, IconFacebook } from "./Icons";
 import { WEEKDAYS } from "@/lib/format";
 
-export default function Footer({ contact = {}, hours = [] }) {
+export default function Footer({ contact = {}, hours = [], branding = {} }) {
   const year = new Date().getFullYear();
   const sortedHours = [1, 2, 3, 4, 5, 6, 0]
     .map((wd) => hours.find((h) => h.weekday === wd))
@@ -13,7 +13,7 @@ export default function Footer({ contact = {}, hours = [] }) {
     <footer className="footer">
       <div className="container footer__grid">
         <div>
-          <Logo size={38} />
+          <Logo size={38} logoUrl={branding.logoUrl} />
           <p className="footer__row mt-2" style={{ marginTop: "1rem", maxWidth: "34ch" }}>
             Prémium szempilla építés és szemöldök-formázás Pécelen és Budapest agglomerációjában.
           </p>
@@ -77,7 +77,7 @@ export default function Footer({ contact = {}, hours = [] }) {
             <div className="footer__map mt-2" style={{ marginTop: "1rem" }}>
               <iframe
                 src={contact.googleMapsEmbed}
-                title="Térkép — Noir by Kriszta, Pécel"
+                title="Térkép — NOIR By Kriszta, Pécel"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />
@@ -91,7 +91,7 @@ export default function Footer({ contact = {}, hours = [] }) {
         </p>
 
         <div className="footer__legal">
-          <span>© {year} Noir by Kriszta. Minden jog fenntartva.</span>
+          <span>© {year} NOIR By Kriszta. Minden jog fenntartva.</span>
           <span>
             <Link href="/adatkezeles">Adatkezelési tájékoztató</Link> ·{" "}
             <Link href="/impresszum">Impresszum</Link>

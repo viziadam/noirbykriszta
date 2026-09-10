@@ -82,7 +82,7 @@ export default function GalleryClient({ images = [] }) {
               onKeyDown={(e) => e.key === "Enter" && setLightbox(idx)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.caption || "Noir by Kriszta munka"} loading="lazy" />
+              <img src={img.url} alt={img.caption || "NOIR By Kriszta munka"} loading="lazy" />
               {img.caption && <figcaption className="masonry__cap">{img.caption}</figcaption>}
             </figure>
           ))}
@@ -122,7 +122,7 @@ export default function GalleryClient({ images = [] }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={plainImages[lightbox].url}
-              alt={plainImages[lightbox].caption || "Noir by Kriszta munka"}
+              alt={plainImages[lightbox].caption || "NOIR By Kriszta munka"}
             />
             {plainImages[lightbox].caption && (
               <p className="lightbox__cap">{plainImages[lightbox].caption}</p>

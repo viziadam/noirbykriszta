@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Kapcsolat — Pécel",
   description:
-    "Noir by Kriszta elérhetőségei: cím Pécelen, telefonszám, email, nyitvatartás és térkép. Kiszolgált környék: Pécel, Isaszeg, Gödöllő, Maglód, Budapest XVI–XVII. kerület.",
+    "NOIR By Kriszta elérhetőségei: cím Pécelen, telefonszám, email, nyitvatartás és térkép. Kiszolgált környék: Pécel, Isaszeg, Gödöllő, Maglód, Budapest XVI–XVII. kerület.",
 };
 
 export default async function ContactPage() {
@@ -40,7 +40,7 @@ export default async function ContactPage() {
               {c.googleMapsEmbed ? (
                 <iframe
                   src={c.googleMapsEmbed}
-                  title="Noir by Kriszta térkép – Pécel"
+                  title="NOIR By Kriszta térkép – Pécel"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                   allowFullScreen

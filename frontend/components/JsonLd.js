@@ -9,7 +9,7 @@ export function localBusinessSchema(contact = {}, hours = []) {
   return {
     "@context": "https://schema.org",
     "@type": "BeautySalon",
-    name: contact.businessName || "Noir by Kriszta — Lash Stylist",
+    name: contact.businessName || "NOIR By Kriszta — Lash Stylist",
     image: OG_IMAGE,
     url: SITE_URL,
     telephone: contact.phone || "+36 30 123 4567",

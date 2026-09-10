@@ -14,7 +14,11 @@ export const metadata = {
 export default async function BookingPage({ searchParams }) {
   const data = await serverGet("/services", { grouped: [] });
   const grouped = data?.grouped || [];
-  const initialServiceId = searchParams?.service || null;
+
+  // ?szolgaltatas= / ?service=  → konkrét szolgáltatás előválasztva (Szolgáltatások oldalról)
+  // ?kategoria= / ?category=    → csak a kategória előválasztva, szolgáltatás NÉLKÜL (Főoldalról)
+  const initialServiceId = searchParams?.szolgaltatas || searchParams?.service || null;
+  const initialCategory = searchParams?.kategoria || searchParams?.category || null;
 
   return (
     <>
@@ -34,7 +38,11 @@ export default async function BookingPage({ searchParams }) {
               elérhetőségeken.
             </p>
           ) : (
-            <BookingWizard grouped={grouped} initialServiceId={initialServiceId} />
+            <BookingWizard
+              grouped={grouped}
+              initialServiceId={initialServiceId}
+              initialCategory={initialCategory}
+            />
           )}
         </div>
       </section>

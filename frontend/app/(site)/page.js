@@ -54,11 +54,20 @@ export default async function HomePage() {
     .filter((i) => i.type === "carousel" || i.type === "gallery")
     .slice(0, 8);
   const beforeAfter = allImages.filter((i) => i.type === "before-after").slice(0, 4);
-  const heroImg = allImages.find((i) => i.type === "hero")?.url || HERO_IMG_FALLBACK;
-  const testimonials = testimonialsData?.testimonials || [];
   const about = content?.about || {};
+  const branding = content?.branding || {};
 
-  // Kategóriánként: induló ár, rövid leírás, reprezentatív kép, előtöltendő szolgáltatás
+  // Hero kép prioritás: admin "Kinézet" → galéria "hero" típus → beépített alap
+  const heroImg =
+    branding.heroImageUrl ||
+    allImages.find((i) => i.type === "hero")?.url ||
+    HERO_IMG_FALLBACK;
+
+  const testimonials = testimonialsData?.testimonials || [];
+
+  // A főoldali kártyák NAGY KATEGÓRIÁK (nem konkrét szolgáltatások). A gomb a
+  // foglaló 1. lépésére visz, előre kiválasztott kategóriával, de szolgáltatás
+  // NÉLKÜL — a látogató ott választja ki a konkrét szolgáltatást.
   const serviceCards = grouped.map((g) => {
     const min = Math.min(...g.items.map((i) => i.price));
     const withImage = g.items.find((i) => i.imageUrl);
@@ -67,7 +76,6 @@ export default async function HomePage() {
       fromPrice: min,
       desc: g.items[0]?.description || "",
       image: withImage?.imageUrl || CATEGORY_FALLBACK_IMG[g.category] || CATEGORY_FALLBACK_IMG.default,
-      bookServiceId: (withImage || g.items[0])?.id,
     };
   });
 
@@ -79,13 +87,13 @@ export default async function HomePage() {
         <img
           className="hero__bg"
           src={heroImg}
-          alt="Prémium szempilla építés közelről – Noir by Kriszta, Pécel"
+          alt="Prémium szempilla építés közelről – NOIR By Kriszta, Pécel"
           fetchPriority="high"
         />
         <div className="hero__overlay" />
         <div className="container hero__content">
           <Reveal>
-            <p className="hero__kicker">Noir by Kriszta · Lash Stylist · Pécel</p>
+            <p className="hero__kicker">NOIR By Kriszta · Lash Stylist · Pécel</p>
             <h1 className="hero__title">Ébressz fel minden reggel egy magabiztosabb tekintetet</h1>
             <p className="hero__lead">
               Prémium szempilla építés és szemöldök-formázás Pécelen, sminc nélkül is ragyogó,
@@ -127,11 +135,11 @@ export default async function HomePage() {
           <div className="about">
             <Reveal className="about__photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ABOUT_IMG} alt="Kriszta, a Noir by Kriszta alapítója, munka közben" loading="lazy" />
+              <img src={ABOUT_IMG} alt="Kriszta, a NOIR By Kriszta alapítója, munka közben" loading="lazy" />
             </Reveal>
             <Reveal>
               <p className="eyebrow">A segítőd a szépségben</p>
-              <h2>{about.heading || "Kriszta vagyok, a Noir by Kriszta alapítója"}</h2>
+              <h2>{about.heading || "Kriszta vagyok, a NOIR By Kriszta alapítója"}</h2>
               <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.15rem" }}>
                 {about.paragraph ||
                   "Éveken át dolgoztam azon, hogy a szempilla építés és szemöldök-formázás ne csak szépészeti, hanem valódi önbizalom-növelő élmény legyen minden vendégem számára. Kizárólag prémium, allergiatesztelt anyagokkal és szigorú higiéniai előírások betartásával dolgozom — hogy Te csak a végeredményre koncentrálhass."}
@@ -173,7 +181,7 @@ export default async function HomePage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={s.image}
-                    alt={`${s.category} – Noir by Kriszta, Pécel`}
+                    alt={`${s.category} – NOIR By Kriszta, Pécel`}
                     loading="lazy"
                   />
                 </div>
@@ -182,7 +190,7 @@ export default async function HomePage() {
                   <p className="card__price">{fromPrice(s.fromPrice)}</p>
                   <p className="card__desc">{s.desc}</p>
                   <Link
-                    href={s.bookServiceId ? `/foglalas?service=${s.bookServiceId}` : "/foglalas"}
+                    href={`/foglalas?kategoria=${encodeURIComponent(s.category)}`}
                     className="btn btn--book btn--block"
                   >
                     Időpontfoglalás
@@ -291,7 +299,7 @@ export default async function HomePage() {
           <Reveal>
             <h2>Foglald le a következő időpontodat még ma</h2>
             <p style={{ maxWidth: "48ch", margin: "0 auto 1.8rem" }}>
-              Magabiztos tekintet minden nap, smink nélkül is. Ez a Noir by Kriszta ígérete.
+              Magabiztos tekintet minden nap, smink nélkül is. Ez a NOIR By Kriszta ígérete.
             </p>
             <Link href="/foglalas" className="btn btn--primary">
               Foglald le az időpontodat

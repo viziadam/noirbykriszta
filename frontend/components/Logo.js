@@ -1,7 +1,23 @@
-// Line-art szem + szemöldök illusztráció arany körvonalban — a spec 2.1 pontja.
-export default function Logo({ size = 44, withText = true }) {
+// Márkalogó. Ha az admin feltöltött saját logót (branding.logoUrl), azt jeleníti
+// meg; egyébként a beépített line-art szem + szemöldök illusztráció + a "NOIR By
+// Kriszta" felirat.
+export default function Logo({ size = 44, withText = true, logoUrl = "" }) {
+  if (logoUrl) {
+    return (
+      <span className="logo">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoUrl}
+          alt="NOIR By Kriszta — Lash Stylist"
+          className="logo__img"
+          style={{ height: size + 6 }}
+        />
+      </span>
+    );
+  }
+
   return (
-    <span className="logo" aria-label="Noir by Kriszta — Lash Stylist">
+    <span className="logo" aria-label="NOIR By Kriszta — Lash Stylist">
       <svg
         width={size}
         height={size}
@@ -26,7 +42,7 @@ export default function Logo({ size = 44, withText = true }) {
       </svg>
       {withText && (
         <span className="logo__text">
-          <span className="logo__name">Noir by Kriszta</span>
+          <span className="logo__name">NOIR By Kriszta</span>
           <span className="logo__sub">Lash Stylist</span>
         </span>
       )}

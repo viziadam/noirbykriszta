@@ -11,14 +11,15 @@ export default async function SiteLayout({ children }) {
   const content = (await serverGet("/content", {})) || {};
   const hoursData = (await serverGet("/business-hours", { hours: [] })) || { hours: [] };
   const contact = content.contact || {};
+  const branding = content.branding || {};
   const hours = hoursData.hours || [];
 
   return (
     <>
       <JsonLd data={localBusinessSchema(contact, hours)} />
-      <Header />
+      <Header logoUrl={branding.logoUrl} />
       <main>{children}</main>
-      <Footer contact={contact} hours={hours} />
+      <Footer contact={contact} hours={hours} branding={branding} />
       <CookieBanner />
     </>
   );

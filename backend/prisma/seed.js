@@ -132,6 +132,12 @@ async function main() {
       slotStepMinutes: Number(process.env.SLOT_STEP_MINUTES) || 30,
       minLeadHours: Number(process.env.MIN_LEAD_HOURS) || 12,
     },
+    branding: {
+      // Üresen hagyva a beépített line-art logó / az alap hero-kép jelenik meg.
+      // Az admin felület "Kinézet" moduljából tölthető fel saját.
+      logoUrl: "",
+      heroImageUrl: "",
+    },
     about: {
       heading: "Kriszta vagyok, a Noir by Kriszta alapítója",
       paragraph:
@@ -143,7 +149,7 @@ async function main() {
       ],
     },
     contact: {
-      businessName: "Noir by Kriszta — Lash Stylist",
+      businessName: "NOIR By Kriszta — Lash Stylist",
       addressLine: "Kossuth Lajos utca 12.",
       city: "Pécel",
       postalCode: "2119",
@@ -158,6 +164,25 @@ async function main() {
         "Szempilla építés és szemöldök lamináció Pécelen és Budapesten. Vendégeim érkeznek Isaszegről, Gödöllőről, Maglódról, valamint Budapest XVI. és XVII. kerületéből is.",
     },
   };
+  // Egyszeri márkanév-normalizálás: ha még az eredeti alapérték van elmentve,
+  // frissítjük "NOIR By Kriszta"-ra (admin által módosított értéket nem bánt).
+  const brandFixes = [
+    ["contact", "businessName", "Noir by Kriszta — Lash Stylist", "NOIR By Kriszta — Lash Stylist"],
+    ["about", "heading", "Kriszta vagyok, a Noir by Kriszta alapítója", "Kriszta vagyok, a NOIR By Kriszta alapítója"],
+  ];
+  for (const [key, field, oldVal, newVal] of brandFixes) {
+    try {
+      const row = await prisma.siteContent.findUnique({ where: { key } });
+      if (!row) continue;
+      const v = JSON.parse(row.value);
+      if (v[field] === oldVal) {
+        v[field] = newVal;
+        await prisma.siteContent.update({ where: { key }, data: { value: JSON.stringify(v) } });
+        console.log(`✓ Márkanév frissítve: ${key}.${field}`);
+      }
+    } catch {}
+  }
+
   for (const [key, value] of Object.entries(content)) {
     const exists = await prisma.siteContent.findUnique({ where: { key } });
     if (!exists || FORCE) {

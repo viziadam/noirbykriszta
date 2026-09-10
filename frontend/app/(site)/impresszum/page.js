@@ -17,7 +17,7 @@ export default function ImprintPage() {
           <div className="stack" style={{ fontFamily: "var(--font-serif)", fontSize: "1.08rem" }}>
             <p className="muted">Kitöltendő a valós vállalkozási adatokkal.</p>
             <p>
-              <strong>Szolgáltató:</strong> Noir by Kriszta (egyéni vállalkozó)
+              <strong>Szolgáltató:</strong> NOIR By Kriszta (egyéni vállalkozó)
               <br />
               <strong>Székhely:</strong> 2119 Pécel, Kossuth Lajos utca 12.
               <br />
