@@ -136,9 +136,10 @@ services:
       BACKUP_KEEP_DAYS: 14
       BACKUP_KEEP_WEEKS: 8
       BACKUP_KEEP_MONTHS: 6
-      HEALTHCHECK_PORT: 8080
     volumes:
       - ./backups/db:/backups
+    healthcheck:
+      disable: true
 
   # ----------------------------------------------------------------
   #  Automatikus képmentés → ./backups/uploads (napi tömörített archív).
