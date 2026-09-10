@@ -133,12 +133,16 @@ cp .env.example .env
 nano .env
 ```
 
+> ⚠️ **A titkokat (jelszavak, tokenek) KIZÁRÓLAG a `.env`-be írd, SOHA a
+> `.env.example`-be** — utóbbi verziókövetett, és ha felkerül GitHubra, bárki látja.
+
 Töltsd ki az alábbiakat (a `#` sorok a magyarázatok):
 
 | Kulcs | Mit írj bele |
 |---|---|
 | `SITE_DOMAIN` | `noirbykriszta.duckdns.org` |
 | `SITE_URL` | `https://noirbykriszta.duckdns.org` |
+| `TZ` | `Europe/Budapest` (marad) |
 | `COMPOSE_PROFILES` | `duckdns` (egyelőre hagyd így) |
 | `DUCKDNS_SUBDOMAIN` | `noirbykriszta` |
 | `DUCKDNS_TOKEN` | a DuckDNS tokened |
@@ -153,6 +157,9 @@ Töltsd ki az alábbiakat (a `#` sorok a magyarázatok):
 Az **email küldést** most még hagyd üresen (`SMTP_*` és `RESEND_API_KEY` üres) —
 így minden email a szerver logjába íródik, a weboldal működik. Az élesítés után
 állítod be (lásd **7. pont**).
+
+A `SLOT_STEP_MINUTES` / `MIN_LEAD_HOURS` csak az **első indítás** alapértékei —
+utána az admin felületről módosíthatók (lásd **9/B pont**).
 
 Mentés a nano-ban: `Ctrl+O`, `Enter`, majd `Ctrl+X`.
 
@@ -267,8 +274,19 @@ elhagyható (vagy meghagyható átirányításnak).
 
 ## 9. Frissítés / újradeploy — ADATVESZTÉS NÉLKÜL
 
-Az adatbázis (`pgdata`), a feltöltött képek (`uploads`) és a HTTPS tanúsítványok
-(`caddy_data`) **nevezett volume-okban** vannak. A lenti parancsok **nem** törlik őket.
+### 9/A. Hogyan tárolódik minden (és miért marad meg)
+
+| Adat | Hol van | Redeploy után |
+|---|---|---|
+| Foglalások, szolgáltatások, árak, nyitvatartás, szünetek, oldalszövegek, **foglalási beállítások** | PostgreSQL → `pgdata` docker volume | **megmarad** |
+| Feltöltött képek (galéria, előtte–utána, kártyaképek) | `uploads` docker volume | **megmarad** |
+| HTTPS tanúsítványok | `caddy_data` docker volume | **megmarad** |
+| Napi automata mentések | `./backups/` a szerver lemezén | **megmarad** (ezt a `down -v` sem törli) |
+
+Az admin felületről módosított **minden** paraméter az adatbázisba kerül, tehát
+a `pgdata` volume-ban van — redeploy után visszatöltődik.
+
+### 9/B. A frissítés menete
 
 ```bash
 cd ~/noirbykriszta
@@ -277,35 +295,69 @@ docker compose up -d --build  # újraépít + újraindít, az adat megmarad
 ```
 
 Az induláskor a backend automatikusan lefuttatja az új adatbázis-migrációkat.
-A seed idempotens: **nem** írja felül az adminban módosított szolgáltatásokat,
-képeket, szövegeket vagy a foglalásokat.
+A seed **idempotens**: csak a hiányzó alapadatokat tölti fel, **nem** írja felül
+az adminban módosított szolgáltatásokat, képeket, szövegeket, beállításokat vagy
+a foglalásokat. A backend logban a végén ezt látod:
+`Seed kész. Megőrzött adatok: N foglalás, M galéria elem, ...`
 
-> ⚠️ **SOHA ne futtasd:** `docker compose down -v` — a `-v` törli a volume-okat
-> (adatbázis + képek + tanúsítványok). Sima `docker compose down` biztonságos.
+> ⚠️ **SOHA ne futtasd:** `docker compose down -v` — a `-v` törli a docker
+> volume-okat (adatbázis + képek + tanúsítványok). A `./backups/` mappa ilyenkor
+> is megmarad, de a visszaállítás macerás. Sima `docker compose down` biztonságos.
 
 ---
 
 ## 10. Biztonsági mentés és visszaállítás
 
-**Mentés (futtasd rendszeresen, pl. cron-ból):**
+### Automatikus (már be van állítva)
+
+A `backup-db` és `backup-uploads` konténerek **naponta** mentenek a
+`./backups/` mappába (a szerver lemezén, a docker volume-októl függetlenül):
+
+```
+backups/db/daily/   backups/db/weekly/   backups/db/monthly/   backups/db/last/
+backups/uploads/uploads_YYYYMMDD_HHMMSS.tar.gz
+```
+
+Retenció: DB 14 nap / 8 hét / 6 hónap; képek 14 archív. Ajánlott ezt a mappát
+időnként a saját gépedre is lehúzni:  `scp -r root@SZERVER_IP:~/noirbykriszta/backups ./`
+
+### Kézi mentés most azonnal
 
 ```bash
 cd ~/noirbykriszta
-docker compose exec -T db pg_dump -U noir noirbykriszta > backup_$(date +%F).sql
-docker run --rm -v noirbykriszta_uploads:/u -v $PWD:/b alpine \
-  tar czf /b/uploads_$(date +%F).tar.gz -C /u .
+docker compose exec backup-db /backup.sh          # DB dump a backups/db-be
+docker compose exec backup-uploads sh -c 'tar czf /backups/uploads_$(date +%F).tar.gz -C /data .'
 ```
 
-**Automatikus napi mentés (a szerveren):**
+### Visszaállítás
+
+Adatbázis (a legfrissebb napi mentésből):
 
 ```bash
-( crontab -l 2>/dev/null; echo "30 3 * * * cd ~/noirbykriszta && docker compose exec -T db pg_dump -U noir noirbykriszta > ~/backup_\$(date +\%F).sql && find ~ -name 'backup_*.sql' -mtime +14 -delete" ) | crontab -
+gunzip -c backups/db/daily/noirbykriszta-latest.sql.gz \
+  | docker compose exec -T db psql -U noir -d noirbykriszta
 ```
 
-**Visszaállítás:**
+Képek:
 
 ```bash
-cat backup_2026-09-10.sql | docker compose exec -T db psql -U noir -d noirbykriszta
+docker run --rm -v noirbykriszta_uploads:/u -v "$PWD/backups/uploads":/b alpine \
+  sh -c 'cd /u && tar xzf /b/uploads_YYYY-MM-DD.tar.gz'
+```
+
+---
+
+## 10/B. Admin jelszó módosítása
+
+Az admin fiók az **első** indításkor jön létre a `.env` `ADMIN_*` értékeivel.
+A `.env` későbbi módosítása nem írja felül. Új jelszó beállítása:
+
+```bash
+cd ~/noirbykriszta
+docker compose exec backend node -e '
+  const b=require("bcryptjs"), {PrismaClient}=require("@prisma/client"), p=new PrismaClient();
+  p.admin.update({where:{email:"IDE_AZ_EMAIL"},data:{passwordHash:b.hashSync("IDE_AZ_UJ_JELSZO",10)}}).then(()=>console.log("kész")).finally(()=>p.$disconnect());
+'
 ```
 
 ---

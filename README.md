@@ -83,8 +83,12 @@ Röviden (részletek: **[DEPLOYMENT.md](./DEPLOYMENT.md)**):
 7. Saját domain megérkeztekor: `SITE_DOMAIN` + `SITE_URL` átírása a `.env`-ben, `docker compose up -d`
 
 **Redeploy adatvesztés nélkül:** `git pull && docker compose up -d --build`.
-Az adatbázis, a feltöltött képek és a tanúsítványok nevezett volume-okban maradnak.
+Minden admin-beállítás, foglalás és feltöltött kép a `pgdata` / `uploads` docker
+volume-okban van, ráadásul napi automata mentés készül a `./backups/` mappába.
 **Soha ne** használd a `docker compose down -v` parancsot (a `-v` törli a volume-okat).
+
+**Időzóna:** a konténerek `Europe/Budapest` (TZ env) — a „12:00" tényleg 12:00
+magyar idő szerint, a foglalásoknál és az emailekben is.
 
 ## Fő funkciók
 
@@ -92,8 +96,8 @@ Az adatbázis, a feltöltött képek és a tanúsítványok nevezett volume-okba
 - **Szolgáltatások** — kategóriánkénti akkordeon árlista, „Foglalás” gomb előtöltéssel
 - **Galéria** — szűrhető rács, lightbox, előtte–utána összehasonlító csúszka
 - **Kapcsolat** — Google Térkép, nyitvatartás, kapcsolatfelvételi űrlap (emailt küld)
-- **Foglalás** — 4 lépéses folyamat, a backend számolja a szabad időpontokat
-- **Admin** — képfeltöltő felület (galéria, előtte–utána, szolgáltatás-kártyakép), szolgáltatások/árak CRUD, foglalások, nyitvatartás/szünetek, tartalom
+- **Foglalás** — 4 lépéses folyamat, a backend számolja a szabad időpontokat; a kezdő-időpontok a beállított felbontás (10/15/20/30/60 perc) rácsára igazítva, egy kezelés után felfelé kerekítve
+- **Admin** — képfeltöltő felület (galéria, előtte–utána, szolgáltatás-kártyakép), szolgáltatások/árak CRUD, foglalások, nyitvatartás/szünetek, **foglalási beállítások (időpont-felbontás, előfoglalási idő)**, tartalom
 - **Email értesítők** — a vendég és Kriszta is kap emailt: foglalás leadása, megerősítés, lemondás, kézi foglalás, kapcsolati űrlap
 - **SEO** — oldalankénti meta, `BeautySalon` JSON-LD, dinamikus `sitemap.xml` / `robots.txt`
 - **GDPR** — cookie sáv, adatkezelési tájékoztató, foglaláskor kötelező elfogadás

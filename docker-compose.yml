@@ -13,6 +13,7 @@ services:
       POSTGRES_USER: noir
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?add meg a POSTGRES_PASSWORD-ot a .env-ben}
       POSTGRES_DB: noirbykriszta
+      TZ: ${TZ:-Europe/Budapest}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -35,6 +36,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
+      TZ: ${TZ:-Europe/Budapest}
       DATABASE_URL: postgresql://noir:${POSTGRES_PASSWORD}@db:5432/noirbykriszta?schema=public
       CORS_ORIGIN: ${SITE_URL}
       JWT_SECRET: ${JWT_SECRET:?add meg a JWT_SECRET-et a .env-ben}
@@ -71,6 +73,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      TZ: ${TZ:-Europe/Budapest}
       BACKEND_URL: http://backend:4000
       SITE_URL: ${SITE_URL:?add meg a SITE_URL-t a .env-ben}
       NEXT_PUBLIC_API_BASE: /api
@@ -106,11 +109,58 @@ services:
     restart: unless-stopped
     profiles: ["duckdns"]
     environment:
-      TZ: Europe/Budapest
+      TZ: ${TZ:-Europe/Budapest}
       SUBDOMAINS: ${DUCKDNS_SUBDOMAIN:-}
       TOKEN: ${DUCKDNS_TOKEN:-}
       UPDATE_IP: ipv4
       LOG_FILE: "false"
+
+  # ----------------------------------------------------------------
+  #  Automatikus adatbázis-mentés → ./backups/db (a szerver lemezén,
+  #  a Docker volume-októl függetlenül; `down -v` sem törli).
+  #  Naponta fut, retención: 14 nap / 8 hét / 6 hónap.
+  # ----------------------------------------------------------------
+  backup-db:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Europe/Budapest}
+      POSTGRES_HOST: db
+      POSTGRES_DB: noirbykriszta
+      POSTGRES_USER: noir
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 14
+      BACKUP_KEEP_WEEKS: 8
+      BACKUP_KEEP_MONTHS: 6
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ./backups/db:/backups
+
+  # ----------------------------------------------------------------
+  #  Automatikus képmentés → ./backups/uploads (napi tömörített archív).
+  # ----------------------------------------------------------------
+  backup-uploads:
+    image: alpine:3.20
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Budapest}
+    volumes:
+      - uploads:/data:ro
+      - ./backups/uploads:/backups
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          ts=$$(date +%Y%m%d_%H%M%S)
+          tar czf "/backups/uploads_$$ts.tar.gz" -C /data . 2>/dev/null || true
+          ls -1t /backups/uploads_*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+          sleep 86400
+        done
 
 volumes:
   pgdata:

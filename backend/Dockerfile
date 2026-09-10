@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
 FROM node:22-alpine AS base
-# A Prisma query engine-hez kell az OpenSSL
-RUN apk add --no-cache openssl
+# openssl: a Prisma query engine-hez ·  tzdata: a magyar időzónához
+RUN apk add --no-cache openssl tzdata
 WORKDIR /app
 
 # ---- Függőségek + Prisma kliens (teljes install, kell a prisma CLI) ----
@@ -16,6 +16,8 @@ RUN npx prisma generate
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=4000
+# Alap időzóna — a docker-compose felül tudja írni a TZ env-vel
+ENV TZ=Europe/Budapest
 
 COPY --from=build /app/node_modules ./node_modules
 COPY package.json ./

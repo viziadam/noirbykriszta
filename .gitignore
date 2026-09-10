@@ -23,6 +23,9 @@ backend/uploads/
 **/caddy_data/
 **/caddy_config/
 
+# Automatikus mentések (a szerveren keletkeznek)
+/backups/
+
 # OS / editor
 .DS_Store
 Thumbs.db

@@ -128,6 +128,10 @@ async function main() {
 
   /* ----------------------------- Oldal-tartalom -------------------------- */
   const content = {
+    booking: {
+      slotStepMinutes: Number(process.env.SLOT_STEP_MINUTES) || 30,
+      minLeadHours: Number(process.env.MIN_LEAD_HOURS) || 12,
+    },
     about: {
       heading: "Kriszta vagyok, a Noir by Kriszta alapítója",
       paragraph:
@@ -168,7 +172,15 @@ async function main() {
     }
   }
 
-  console.log("\nSeed kész.");
+  /* --------- Meglévő (redeploy-on átmentett) adatok összegzése --------- */
+  const [apptCount, uploadedImages] = await Promise.all([
+    prisma.appointment.count(),
+    prisma.galleryImage.count(),
+  ]);
+  console.log(
+    `\nSeed kész. Megőrzött adatok: ${apptCount} foglalás, ${uploadedImages} galéria elem, ` +
+      `${await prisma.service.count()} szolgáltatás.`
+  );
 }
 
 main()

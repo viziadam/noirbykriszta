@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import prisma from "../prisma.js";
 import { isSlotStillFree } from "../lib/availability.js";
+import { getBookingSettings, setBookingSettings, ALLOWED_STEPS } from "../lib/settings.js";
 import { upload } from "../lib/upload.js";
 import { sendBookingStatusChanged } from "../lib/email.js";
 
@@ -162,6 +163,18 @@ router.put("/content/:key", async (req, res) => {
     create: { key, value },
   });
   res.json({ content: { key, value: JSON.parse(row.value) } });
+});
+
+/* ==================== FOGLALÁSI BEÁLLÍTÁSOK ==================== */
+router.get("/booking-settings", async (_req, res) => {
+  const settings = await getBookingSettings();
+  res.json({ settings, allowedSteps: ALLOWED_STEPS });
+});
+
+router.put("/booking-settings", async (req, res) => {
+  const { slotStepMinutes, minLeadHours } = req.body || {};
+  const settings = await setBookingSettings({ slotStepMinutes, minLeadHours });
+  res.json({ settings });
 });
 
 /* ============================= NYITVATARTÁS ============================= */

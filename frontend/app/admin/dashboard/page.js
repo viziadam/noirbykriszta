@@ -533,9 +533,11 @@ function GalleryPanel() {
 function HoursPanel() {
   const { data, error, reload } = useLoad(() => adminFetch("/business-hours"), []);
   const timeOff = useLoad(() => adminFetch("/admin/time-off"), []);
+  const bookingCfg = useLoad(() => adminFetch("/admin/booking-settings"), []);
   const [rows, setRows] = useState(null);
   const [saved, setSaved] = useState("");
   const [off, setOff] = useState({ startDate: "", endDate: "", reason: "" });
+  const [booking, setBooking] = useState(null);
 
   useEffect(() => {
     if (data?.hours) {
@@ -546,11 +548,22 @@ function HoursPanel() {
     }
   }, [data]);
 
+  useEffect(() => {
+    if (bookingCfg.data?.settings) setBooking(bookingCfg.data.settings);
+  }, [bookingCfg.data]);
+
   const saveHours = async () => {
     await adminFetch("/admin/business-hours", { method: "PUT", body: { hours: rows } });
     setSaved("Nyitvatartás mentve.");
     setTimeout(() => setSaved(""), 2500);
     reload();
+  };
+
+  const saveBooking = async () => {
+    const res = await adminFetch("/admin/booking-settings", { method: "PUT", body: booking });
+    setBooking(res.settings);
+    setSaved("Foglalási beállítások mentve.");
+    setTimeout(() => setSaved(""), 2500);
   };
   const addOff = async (e) => {
     e.preventDefault();
@@ -604,6 +617,52 @@ function HoursPanel() {
         <button className="btn btn--primary btn--sm" onClick={saveHours}>
           Nyitvatartás mentése
         </button>
+      </div>
+
+      <div className="admin-card" style={{ maxWidth: 520 }}>
+        <h3>Foglalási beállítások</h3>
+        <p className="muted">
+          Az időpont-felbontás határozza meg, milyen sűrűn kínálunk kezdő-időpontokat.
+          Egy szolgáltatás után a következő szabad időpont mindig felfelé kerekítve, a
+          rácsra igazítva jelenik meg (pl. 30 perces felbontásnál egy 15:15-ig tartó
+          kezelés után 15:30 az első ajánlott időpont).
+        </p>
+        {booking ? (
+          <>
+            <div className="admin-field">
+              <label>Időpont-felbontás</label>
+              <select
+                value={booking.slotStepMinutes}
+                onChange={(e) =>
+                  setBooking((b) => ({ ...b, slotStepMinutes: Number(e.target.value) }))
+                }
+              >
+                {(bookingCfg.data?.allowedSteps || [10, 15, 20, 30, 60]).map((n) => (
+                  <option key={n} value={n}>
+                    {n} perc
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="admin-field">
+              <label>Legkorábban hány órával előre lehessen foglalni</label>
+              <input
+                type="number"
+                min="0"
+                max="336"
+                value={booking.minLeadHours}
+                onChange={(e) =>
+                  setBooking((b) => ({ ...b, minLeadHours: Number(e.target.value) }))
+                }
+              />
+            </div>
+            <button className="btn btn--primary btn--sm" onClick={saveBooking}>
+              Foglalási beállítások mentése
+            </button>
+          </>
+        ) : (
+          <div className="spinner" />
+        )}
       </div>
 
       <div className="admin-card" style={{ maxWidth: 520 }}>

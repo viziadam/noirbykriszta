@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import prisma from "../prisma.js";
 import { getAvailableSlots, isSlotStillFree } from "../lib/availability.js";
+import { getBookingSettings } from "../lib/settings.js";
 import { sendBookingCreated, sendContactEmail } from "../lib/email.js";
 
 const router = Router();
@@ -71,6 +72,12 @@ router.get("/business-hours", async (_req, res) => {
   res.json({ hours });
 });
 
+/* ---------------------- Foglalási beállítások (publikus) ------------------- */
+router.get("/booking-settings", async (_req, res) => {
+  const s = await getBookingSettings();
+  res.json(s);
+});
+
 /* --------------------------- Szabad időpontok ----------------------------- */
 router.get("/availability", async (req, res) => {
   const { date, serviceId } = req.query;
@@ -103,7 +110,7 @@ router.post("/appointments", bookingLimiter, async (req, res) => {
   }
   const { serviceId, startTime, customerName, phone, email, note } = parsed.data;
 
-  const check = await isSlotStillFree(startTime, serviceId);
+  const check = await isSlotStillFree(startTime, serviceId, { enforceGrid: true });
   if (!check.ok) {
     return res.status(409).json({ error: "Ez az időpont időközben foglalt lett. Válassz másikat.", reason: check.reason });
   }
